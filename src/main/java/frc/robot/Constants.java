@@ -17,6 +17,11 @@ import edu.wpi.first.wpilibj.Filesystem;
 /** Add your docs here. */
 public class Constants {
     public static class FieldConstants {
+        public static final int TELEOP_LENGTH_SECONDS     = 140;
+        public static final int TRANSITION_PERIOD_SECONDS = 10;
+        public static final int SHIFT_LENGTH_SECONDS      = 25;
+        public static final int ENDGAME_LENGTH_SECONDS    = 30;
+
         public static final String aprilTagJson = "2026-rebuilt-welded";
         public static final Path aprilTagJsonPath =
             Path.of(Filesystem.getDeployDirectory().getPath(), "apriltags", aprilTagJson + ".json");
