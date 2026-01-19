@@ -13,7 +13,7 @@ import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.math.util.Units;
 
 public class Drive {
-    public static final double SWERVE_DIST_FROM_CENTER = 0.3254375;
+    public static final double SWERVE_DIST_FROM_CENTER = 0.29845;
     public static final Translation2d centerLocation = new Translation2d(0, 0);
     public static final Translation2d frontLeftLocation = new Translation2d(SWERVE_DIST_FROM_CENTER, SWERVE_DIST_FROM_CENTER);
     public static final Translation2d frontRightLocation = new Translation2d(SWERVE_DIST_FROM_CENTER, -SWERVE_DIST_FROM_CENTER);
