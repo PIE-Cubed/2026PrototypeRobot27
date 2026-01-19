@@ -32,7 +32,7 @@ public class Drive {
     private final double ROTATE_I = 0.0;
     private final double ROTATE_D = 0.0;
 
-    private final double MAX_WHEEL_SPEED = 1;
+    private final double MAX_WHEEL_POWER = 1;
 
     private AHRS ahrs;
 
@@ -63,11 +63,10 @@ public class Drive {
             backRightLocation
         );
 
-        // TODO: get real ids
-        frontLeft  = new SwerveModule(14, 15, false);
-        frontRight = new SwerveModule(16, 17, true);
-        backLeft   = new SwerveModule(12, 13, false);
-        backRight  = new SwerveModule(10, 11, true);
+        frontLeft  = new SwerveModule(14, 15, true);
+        frontRight = new SwerveModule(16, 17, false);
+        backLeft   = new SwerveModule(12, 13, true);
+        backRight  = new SwerveModule(10, 11, false);
 
         rotatePID = new PIDController(ROTATE_P, ROTATE_I, ROTATE_D);
     }
@@ -91,16 +90,46 @@ public class Drive {
                 : new ChassisSpeeds(forwardPowerFwdPos, strafePowerLeftPos, rotatePowerCcwPos)
             );
 
-        SwerveDriveKinematics.desaturateWheelSpeeds(swerveModuleStates, MAX_WHEEL_SPEED);
+        SwerveDriveKinematics.desaturateWheelSpeeds(swerveModuleStates, MAX_WHEEL_POWER);
 
-        frontLeft.setDesiredState(swerveModuleStates[0], false);
-        frontRight.setDesiredState(swerveModuleStates[1], false);
-        backLeft.setDesiredState(swerveModuleStates[2], false);
-        backRight.setDesiredState(swerveModuleStates[3], false);
-
+        frontLeft.setDesiredState(swerveModuleStates[0], true);
+        frontRight.setDesiredState(swerveModuleStates[1], true);
+        backLeft.setDesiredState(swerveModuleStates[2], true);
+        backRight.setDesiredState(swerveModuleStates[3], true);
     }
 
     public double getYawRadians() {
         return MathUtil.angleModulus(-Units.degreesToRadians(ahrs.getYaw()));
+    }
+
+    public void stopWheels() {
+        frontLeft.setDriveMotorPower(0.0);
+        frontLeft.setRotateMotorPower(0.0);
+
+        frontRight.setDriveMotorPower(0.0);
+        frontRight.setRotateMotorPower(0.0);
+        
+        backLeft.setDriveMotorPower(0.0);
+        backLeft.setRotateMotorPower(0.0);
+        
+        backRight.setDriveMotorPower(0.0);
+        backRight.setRotateMotorPower(0.0);
+    }
+
+    /**
+    * Zero the gyro
+    */
+    public void resetGyro() {
+        ahrs.zeroYaw();
+    }
+
+    /**
+    * Crosses the wheels and makes the robot impossible to move.
+    */
+    public void lockWheels() {
+        frontLeft.setDesiredState(new SwerveModuleState(0, new Rotation2d( Math.PI / 4 )), false);
+        frontRight.setDesiredState(new SwerveModuleState(0, new Rotation2d( -Math.PI / 4 )), false);
+        backLeft.setDesiredState(new SwerveModuleState(0, new Rotation2d( -Math.PI / 4 )), false);
+        backRight.setDesiredState(new SwerveModuleState(0, new Rotation2d( Math.PI / 4 )), false);       
     }
 }

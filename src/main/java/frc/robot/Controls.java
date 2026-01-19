@@ -15,7 +15,7 @@ public class Controls {
 
     // Zorro Controller
 
-    public double getForwardPowerFwdPos() {
+    public double getForwardPowerFwdPositive() {
         double powerFwdPos = driveController.getLeftY();
 
         powerFwdPos = Math.pow(powerFwdPos, 3);
@@ -28,7 +28,7 @@ public class Controls {
     }
 
 
-    public double getStrafePowerLeftPos() {
+    public double getStrafePowerLeftPositive() {
         double powerRightPos = driveController.getLeftX();
 
         powerRightPos = Math.pow(powerRightPos, 3);
@@ -40,7 +40,7 @@ public class Controls {
     }
 
 
-    public double getRotatePowerCcwPos() {
+    public double getRotatePowerCcwPositive() {
         double powerCwPos = driveController.getRightX();
 
         powerCwPos = Math.pow(powerCwPos, 3);
