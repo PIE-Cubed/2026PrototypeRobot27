@@ -4,9 +4,16 @@
 
 package frc.robot;
 
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.PowerDistribution;
 import edu.wpi.first.wpilibj.TimedRobot;
+import edu.wpi.first.wpilibj.PowerDistribution.ModuleType;
+import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import frc.robot.util.AllianceUtil;
 
 /**
  * The methods in this class are called automatically corresponding to each mode, as described in
@@ -28,6 +35,10 @@ public class Robot extends TimedRobot {
   private String m_autoSelected;
   private final SendableChooser<String> m_chooser = new SendableChooser<>();
 
+  private PowerDistribution pdh;
+
+  private final Field2d field2d = new Field2d();
+
   private Controls controls;
   private Drive drive;
 
@@ -41,6 +52,8 @@ public class Robot extends TimedRobot {
     m_chooser.addOption("My Auto", kCustomAuto);
     SmartDashboard.putData("Auto choices", m_chooser);
 
+    pdh = new PowerDistribution(1, ModuleType.kRev);
+
     controls = new Controls();
     drive = new Drive();
   }
@@ -53,7 +66,21 @@ public class Robot extends TimedRobot {
    * SmartDashboard integrated updating.
    */
   @Override
-  public void robotPeriodic() {}
+  public void robotPeriodic() {
+    SmartDashboard.putNumber("Voltage", pdh.getVoltage());
+
+    // TODO: Add Odometry
+    field2d.setRobotPose(new Pose2d(0, 0, new Rotation2d(0)));
+
+    SmartDashboard.putData("Field", field2d);
+
+    // TODO: Make this not stupid
+    double time = AllianceUtil.getMatchTime();
+
+    SmartDashboard.putNumber("Match Time", DriverStation.getMatchTime());
+    SmartDashboard.putNumber("Time Until Shift", AllianceUtil.timeUntilShift(time));
+    SmartDashboard.putBoolean("Hub Active", AllianceUtil.isOurShift(AllianceUtil.getShift(time)));
+  }
 
   /**
    * This autonomous (along with the chooser code above) shows how to select between different
