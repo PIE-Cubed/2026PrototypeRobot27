@@ -67,7 +67,7 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void robotPeriodic() {
-    SmartDashboard.putNumber("Voltage", pdh.getVoltage());
+    //SmartDashboard.putNumber("Voltage", pdh.getVoltage());
 
     // TODO: Add Odometry
     field2d.setRobotPose(new Pose2d(0, 0, new Rotation2d(0)));
