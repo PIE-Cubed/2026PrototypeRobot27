@@ -82,6 +82,9 @@ public class Odometry {
     // private int c3noResultsCount = 0;
     // private int c4noResultsCount = 0;
 
+    private Pose2d lastPose = new Pose2d();
+    private Pose2d currPose = new Pose2d();
+
     public Odometry(Drive drive) {
         this.drive = drive;
 
@@ -184,6 +187,7 @@ public class Odometry {
                 }
             }
         }
+
         /*
         else if (c1noResultsCount <= 3) { // Camera hasn't processed any results within the past 3 or less loops
             c1noResultsCount++;
@@ -313,6 +317,9 @@ public class Odometry {
             System.err.println("ERROR 418: camera4: I am a teapot (" + noResultsCount + ")");
         }
         */
+
+        lastPose = currPose;
+        currPose = getPose();
     }
  
     /**
@@ -429,12 +436,11 @@ public class Odometry {
     }
 
     /**
-     * TODO: Finish this later
      * @param fieldRelative
      * @return
      */
-    public Transform2d getVelocity(boolean fieldRelative) {
-        Transform2d velocityMeters = new Transform2d();
+    public Transform2d getVelocity() {
+        Transform2d velocityMeters = currPose.minus(lastPose);
 
         return velocityMeters;
     }
