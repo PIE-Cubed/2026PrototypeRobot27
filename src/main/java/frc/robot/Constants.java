@@ -1,7 +1,3 @@
-// Copyright (c) FIRST and other WPILib contributors.
-// Open Source Software; you can modify and/or share it under the terms of
-// the WPILib BSD license file in the root directory of this project.
-
 package frc.robot;
 
 import java.io.IOException;
@@ -29,11 +25,11 @@ public class Constants {
         public static AprilTagFieldLayout aprilTagLayout;
 
         static {
-        try {
-            aprilTagLayout = new AprilTagFieldLayout(aprilTagJsonPath);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+            try {
+                aprilTagLayout = new AprilTagFieldLayout(aprilTagJsonPath);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
 
         public static final Pose2d hubBlueAlliance = new Pose2d(4.625594, 4.03479, Rotation2d.kZero);

@@ -1,0 +1,43 @@
+package frc.robot;
+
+import com.revrobotics.PersistMode;
+import com.revrobotics.ResetMode;
+import com.revrobotics.spark.SparkBase;
+import com.revrobotics.spark.SparkMax;
+import com.revrobotics.spark.SparkLowLevel.MotorType;
+import com.revrobotics.spark.config.SparkBaseConfig;
+import com.revrobotics.spark.config.SparkMaxConfig;
+import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
+
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+
+/** Add your docs here. */
+public class Hopper {
+    private final int MAX_STALL_LIMIT = 20;
+    private final int MAX_FREE_LIMIT = 60;
+    private final int INDEX_MOTOR_ID = 32;
+
+    private SparkBase       indexMotor       = new SparkMax(INDEX_MOTOR_ID, MotorType.kBrushless);
+    private SparkBaseConfig indexMotorConfig = new SparkMaxConfig();
+
+    public Hopper() {
+        indexMotorConfig.inverted(false)
+                        .smartCurrentLimit(MAX_STALL_LIMIT, MAX_FREE_LIMIT)
+                        .idleMode(IdleMode.kBrake);
+
+        indexMotor.configure(indexMotorConfig, 
+                             ResetMode.kNoResetSafeParameters, 
+                             PersistMode.kPersistParameters);
+
+        // TODO: Figure out a good speed for this later.
+        SmartDashboard.putNumber("Hopper/MotorPower", 0.75);
+    }
+
+    public void indexFuel() {
+        indexMotor.set(SmartDashboard.getNumber("Hopper/MotorPower", 0));
+    }
+
+    public void stopMotors() {
+        indexMotor.stopMotor();
+    }
+}

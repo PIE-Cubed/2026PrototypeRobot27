@@ -1,11 +1,5 @@
-// Copyright (c) FIRST and other WPILib contributors.
-// Open Source Software; you can modify and/or share it under the terms of
-// the WPILib BSD license file in the root directory of this project.
-
 package frc.robot;
 
-import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.PowerDistribution;
 import edu.wpi.first.wpilibj.TimedRobot;
@@ -40,7 +34,9 @@ public class Robot extends TimedRobot {
   private final Field2d field2d = new Field2d();
 
   private Controls controls;
-  private Drive drive;
+  private Drive    drive;
+  private Odometry odometry;
+  private Hopper   hopper;
 
   /**
    * This function is run when the robot is first started up and should be used for any
@@ -55,7 +51,9 @@ public class Robot extends TimedRobot {
     pdh = new PowerDistribution(1, ModuleType.kRev);
 
     controls = new Controls();
-    drive = new Drive();
+    drive    = new Drive();
+    odometry = new Odometry(drive);
+    hopper   = new Hopper();
   }
 
   /**
@@ -67,17 +65,18 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void robotPeriodic() {
-    //SmartDashboard.putNumber("Voltage", pdh.getVoltage());
+    odometry.updatePoseEstimators();
 
-    // TODO: Add Odometry
-    field2d.setRobotPose(new Pose2d(0, 0, new Rotation2d(0)));
+    SmartDashboard.putNumber("Voltage", pdh.getVoltage());
+
+    field2d.setRobotPose(odometry.getPose());
 
     SmartDashboard.putData("Field", field2d);
 
     // TODO: Make this not stupid
     double time = AllianceUtil.getMatchTime();
 
-    SmartDashboard.putNumber("Match Time", DriverStation.getMatchTime());
+    SmartDashboard.putNumber("Match Time", time);
     SmartDashboard.putNumber("Time Until Shift", AllianceUtil.timeUntilShift(time));
     SmartDashboard.putBoolean("Hub Active", AllianceUtil.isOurShift(AllianceUtil.getShift(time)));
   }
@@ -121,6 +120,7 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopPeriodic() {
     wheelControl();
+    shooterControl();
   }
 
   /** This function is called once when the robot is disabled. */
@@ -166,5 +166,13 @@ public class Robot extends TimedRobot {
     if (resetGyro) {
       drive.resetGyro();
     }
+  }
+
+  private void shooterControl() {
+    boolean shootButton = controls.getShootButton();
+
+    if (shootButton == true) {
+      hopper.indexFuel();
+    } 
   }
 }

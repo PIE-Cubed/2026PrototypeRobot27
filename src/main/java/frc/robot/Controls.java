@@ -3,13 +3,13 @@ package frc.robot;
 import edu.wpi.first.wpilibj.XboxController;
 
 public class Controls {
-    XboxController controller;
+    XboxController manipController;
     ZorroController driveController;
 
     public static final double DRIVE_CONTROLLER_DEADZONE = 0.01;
 
     public Controls() {
-        controller = new XboxController(1);
+        manipController = new XboxController(1);
         driveController = new ZorroController(0);
     }
 
@@ -83,4 +83,8 @@ public class Controls {
     /*              Xbox Controller              */
     /*                                           */
     /*********************************************/
+
+    public boolean getShootButton() {
+        return manipController.getRightBumperButton();
+    }
 }
