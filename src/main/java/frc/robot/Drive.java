@@ -9,6 +9,7 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
+import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.math.util.Units;
 
@@ -131,5 +132,31 @@ public class Drive {
         frontRight.setDesiredState(new SwerveModuleState(0, new Rotation2d( -Math.PI / 4 )), false);
         backLeft.setDesiredState(new SwerveModuleState(0, new Rotation2d( -Math.PI / 4 )), false);
         backRight.setDesiredState(new SwerveModuleState(0, new Rotation2d( Math.PI / 4 )), false);       
+    }
+
+    /**
+     * @return The robot yaw rate, measured in degrees per second.
+     */
+    public double getYawRateDegrees() {
+        return ahrs.getRate();
+    }
+
+    /**
+     * @return The robot yaw rate, measured in radians per second.
+     */
+    public double getYawRateRadians() {
+        return Math.toRadians(ahrs.getRate());
+    }
+
+    /**
+     * @return A SwerveModulePosition[] containing each module's current position.
+     */
+    public SwerveModulePosition[] getModulePositions() {
+        return new SwerveModulePosition[] { 
+            frontLeft.getModulePosition(),
+            frontRight.getModulePosition(),
+            backLeft.getModulePosition(),
+            backRight.getModulePosition()
+        };
     }
 }
