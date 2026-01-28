@@ -127,8 +127,13 @@ public class Robot extends TimedRobot {
     wheelControl();
     shooterControl();
 
-    shooter.setBottomMotorVoltage(5);
-    shooter.setTopMotorVoltage(5);
+    if (controls.getAButton()) {
+      shooter.setBottomMotorVoltage(3);
+      shooter.setTopMotorVoltage(3);
+    }
+    else {
+      shooter.stopMotors();
+    }
 
     /*
     SmartDashboard.putBoolean(

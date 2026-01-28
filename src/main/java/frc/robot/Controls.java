@@ -87,4 +87,8 @@ public class Controls {
     public boolean getShootButton() {
         return manipController.getRightBumperButton();
     }
+
+    public boolean getAButton() {
+        return manipController.getAButton();
+    }
 }
