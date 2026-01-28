@@ -37,6 +37,7 @@ public class Robot extends TimedRobot {
   private Drive    drive;
   private Odometry odometry;
   private Hopper   hopper;
+  private Shooter  shooter;
 
   /**
    * This function is run when the robot is first started up and should be used for any
@@ -52,8 +53,12 @@ public class Robot extends TimedRobot {
 
     controls = new Controls();
     drive    = new Drive();
-    odometry = new Odometry(drive);
+    //odometry = new Odometry(drive);
     hopper   = new Hopper();
+    shooter  = new Shooter();
+
+    SmartDashboard.putNumber("Shooter/FlywheelTargetRPM", 0);
+    SmartDashboard.putNumber("Shooter/BackspinTargetRPM", 0);
   }
 
   /**
@@ -65,11 +70,11 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void robotPeriodic() {
-    odometry.updatePoseEstimators();
+    //odometry.updatePoseEstimators();
 
-    SmartDashboard.putNumber("Voltage", pdh.getVoltage());
+    //SmartDashboard.putNumber("Voltage", pdh.getVoltage());
 
-    field2d.setRobotPose(odometry.getPose());
+    //field2d.setRobotPose(Odometry.getPose());
 
     SmartDashboard.putData("Field", field2d);
 
@@ -121,6 +126,20 @@ public class Robot extends TimedRobot {
   public void teleopPeriodic() {
     wheelControl();
     shooterControl();
+
+    shooter.setMotorPowers(0.2, 0.25);
+
+    /*
+    SmartDashboard.putBoolean(
+      "Shooter/FlywheelAtTargetRPM",
+      shooter.setFlywheelRPM(SmartDashboard.getNumber("Shooter/FlywheelTargetRPM", 0)) == DONE
+    );
+
+    SmartDashboard.putBoolean(
+      "Shooter/BackspinAtTargetRPM", 
+      shooter.setBackspinRPM(SmartDashboard.getNumber("Shooter/BackspinTargetRPM", 0)) == DONE
+    );
+    */
   }
 
   /** This function is called once when the robot is disabled. */
@@ -174,5 +193,8 @@ public class Robot extends TimedRobot {
     if (shootButton == true) {
       hopper.indexFuel();
     } 
+    else {
+      hopper.stopMotors();
+    }
   }
 }
