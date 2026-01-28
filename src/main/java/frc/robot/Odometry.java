@@ -44,7 +44,8 @@ public class Odometry {
     private final Vector<N3> APRILTAG_STD_DEV = VecBuilder.fill(0.3, 0.3, 0.5);
 
     // Distances from bottom center of robot to each camera
-    // When rotation is 0 for all axes the Y axis is parallel .
+    // When rotation is 0 for all axes the Z axis is parallel to the front of the robot.
+    // TODO: figure out camera offsets and get multi cam setup working
     private final Transform3d ROBOT_TO_CAMERA1 = new Transform3d(Units.inchesToMeters(14.532183), Units.inchesToMeters(0), Units.inchesToMeters(6.081022),
                                                  new Rotation3d( Units.degreesToRadians(0),     Units.degreesToRadians(-23),    Units.degreesToRadians(0)));
     // private final Transform3d ROBOT_TO_CAMERA2 = new Transform3d(0, 0, 0, new Rotation3d(0, 0, 0));
@@ -53,7 +54,7 @@ public class Odometry {
 
     // Estimators
     private SwerveDriveOdometry encoderEstimator;        // Might not need this as aprilTagsEstimator also uses the encoders
-    private SwerveDrivePoseEstimator aprilTagsEstimator;
+    private static SwerveDrivePoseEstimator aprilTagsEstimator;
     private PhotonPoseEstimator camera1PoseEstimator; // Photon Vision estimators
     // private PhotonPoseEstimator camera2PoseEstimator; //
     // private PhotonPoseEstimator camera3PoseEstimator; //
@@ -75,12 +76,6 @@ public class Odometry {
     // private EstimatedRobotPose camera4Pose3d;
     
     public Drive drive;
-
-    private int noResultsCount = 0;
-    private int c1noResultsCount = 0;
-    // private int c2noResultsCount = 0;
-    // private int c3noResultsCount = 0;
-    // private int c4noResultsCount = 0;
 
     private Pose2d lastPose = new Pose2d();
     private Pose2d currPose = new Pose2d();
@@ -165,7 +160,6 @@ public class Odometry {
         }
 
         if (!camera1Results.isEmpty()) { // Has the camera processed any new results?
-            c1noResultsCount = 0;
             latestResult = camera1Results.get(camera1Results.size() - 1);
 
             if (camera1Results.get(camera1Results.size() - 1).hasTargets()) { // Does the camera see any targets?
@@ -174,9 +168,6 @@ public class Odometry {
                 // Checking if the camera sees enough apriltags while moving slow enough to get a good position estimate
                 if ((newResult.targets.size() >= REQUIRED_APRILTAGS) && (drive.getYawRateDegrees() <= MAX_YAW_RATE_DEGREES)) {
                     camera1Pose3d = camera1PoseEstimator.update(newResult).get(); // Grab estimated Pose3d from camera
-    
-                    // DogLog.log("Odometry/purePhotonPose", camera1Pose3d.estimatedPose);
-                    // DogLog.log("Odometry/camera1/targetAmbiguity", camera1Pose3d.targetsUsed.get(0).poseAmbiguity);
     
                     // Add vision data to estimator
                     aprilTagsEstimator.addVisionMeasurement(camera1Pose3d.estimatedPose.toPose2d(), // Estimated pose
@@ -188,17 +179,6 @@ public class Odometry {
             }
         }
 
-        /*
-        else if (c1noResultsCount <= 3) { // Camera hasn't processed any results within the past 3 or less loops
-            c1noResultsCount++;
-        }
-        else { // Camera hasn't processed any results within the last 4 or more loops; something is wrong
-            c1noResultsCount++;
-            latestResult = null;
-            System.err.println("ERROR 418: camera1: I am a teapot (" + noResultsCount + ")");
-        }
-        */
-
         // Repeat above code for each camera
         /*
         camera2Results = camera2.getAllUnreadResults();
@@ -208,7 +188,6 @@ public class Odometry {
         }
 
         if (!camera2Results.isEmpty()) { // Has the camera processed any new results?
-            c2noResultsCount = 0;
             // latestResult = camera2Results.get(camera2Results.size() - 1);
 
             if (camera2Results.get(camera2Results.size() - 1).hasTargets()) { // Does the camera see any targets?
@@ -217,10 +196,7 @@ public class Odometry {
                 // Checking if the camera sees enough apriltags while moving slow enough to get a good position estimate
                 if ((newResult.targets.size() >= REQUIRED_APRILTAGS) && (drive.getYawRate() <= MAX_YAW_RATE)) {
                     camera2Pose3d = camera2PoseEstimator.update(newResult).get(); // Grab estimated Pose3d from camera
-    
-                    // DogLog.log("Odometry/purePhotonPose", camera2Pose3d.estimatedPose);
-                    DogLog.log("Odometry/camera2/targetAmbiguity", camera2Pose3d.targetsUsed.get(0).poseAmbiguity);
-    
+        
                     // Add vision data to estimator
                     aprilTagsEstimator.addVisionMeasurement(camera2Pose3d.estimatedPose.toPose2d(), // Estimated pose
                                                             camera2Pose3d.timestampSeconds, // Time of sample
@@ -229,14 +205,6 @@ public class Odometry {
                                                             camera2.getCameraMatrix().orElse(new Matrix<N3, N3>(new SimpleMatrix(3, 3))).extractColumnVector(0));
                 }
             }
-        }
-        else if (c2noResultsCount <= 3) { // Camera hasn't processed any results within the past 3 or less loops
-            c2noResultsCount++;
-        }
-        else { // Camera hasn't processed any results within the last 4 or more loops; something is wrong
-            c2noResultsCount++;
-            // latestResult = null;
-            System.err.println("ERROR 418: camera2: I am a teapot (" + noResultsCount + ")");
         }
         
         /*
@@ -247,7 +215,6 @@ public class Odometry {
         }
 
         if (!camera3Results.isEmpty()) { // Has the camera processed any new results?
-            c3noResultsCount = 0;
             // latestResult = camera3Results.get(camera3Results.size() - 1);
 
             if (camera3Results.get(camera3Results.size() - 1).hasTargets()) { // Does the camera see any targets?
@@ -256,9 +223,6 @@ public class Odometry {
                 // Checking if the camera sees enough apriltags while moving slow enough to get a good position estimate
                 if ((newResult.targets.size() >= REQUIRED_APRILTAGS) && (drive.getYawRate() <= MAX_YAW_RATE)) {
                     camera3Pose3d = camera3PoseEstimator.update(newResult).get(); // Grab estimated Pose3d from camera
-    
-                    // DogLog.log("Odometry/purePhotonPose", camera3Pose3d.estimatedPose);
-                    DogLog.log("Odometry/camera3/targetAmbiguity", camera3Pose3d.targetsUsed.get(0).poseAmbiguity);
     
                     // Add vision data to estimator
                     aprilTagsEstimator.addVisionMeasurement(camera3Pose3d.estimatedPose.toPose3d(), // Estimated pose
@@ -269,14 +233,6 @@ public class Odometry {
                 }
             }
         }
-        else if (c3noResultsCount <= 3) { // Camera hasn't processed any results within the past 3 or less loops
-            c3noResultsCount++;
-        }
-        else { // Camera hasn't processed any results within the last 4 or more loops; something is wrong
-            c3noResultsCount++;
-            // latestResult = null;
-            System.err.println("ERROR 418: camera3: I am a teapot (" + noResultsCount + ")");
-        }
 
         /*
         camera4Results = camera4.getAllUnreadResults();
@@ -286,7 +242,6 @@ public class Odometry {
         }
 
         if (!camera4Results.isEmpty()) { // Has the camera processed any new results?
-            c4noResultsCount = 0;
             // latestResult = camera4Results.get(camera4Results.size() - 1);
 
             if (camera4Results.get(camera4Results.size() - 1).hasTargets()) { // Does the camera see any targets?
@@ -296,9 +251,6 @@ public class Odometry {
                 if ((newResult.targets.size() >= REQUIRED_APRILTAGS) && (drive.getYawRate() <= MAX_YAW_RATE)) {
                     camera4Pose3d = camera4PoseEstimator.update(newResult).get(); // Grab estimated Pose3d from camera
     
-                    // DogLog.log("Odometry/purePhotonPose", camera4Pose3d.estimatedPose);
-                    DogLog.log("Odometry/camera4/targetAmbiguity", camera4Pose3d.targetsUsed.get(0).poseAmbiguity);
-    
                     // Add vision data to estimator
                     aprilTagsEstimator.addVisionMeasurement(camera4Pose3d.estimatedPose.toPose4d(), // Estimated pose
                                                             camera4Pose3d.timestampSeconds, // Time of sample
@@ -307,14 +259,6 @@ public class Odometry {
                                                             camera4.getCameraMatrix().orElse(new Matrix<N3, N3>(new SimpleMatrix(3, 3))).extractColumnVector(0));
                 }
             }
-        }
-        else if (c4noResultsCount <= 3) { // Camera hasn't processed any results within the past 3 or less loops
-            c4noResultsCount++;
-        }
-        else { // Camera hasn't processed any results within the last 4 or more loops; something is wrong
-            c4noResultsCount++;
-            // latestResult = null;
-            System.err.println("ERROR 418: camera4: I am a teapot (" + noResultsCount + ")");
         }
         */
 
@@ -338,7 +282,7 @@ public class Odometry {
      * 
      * @return The estimated Pose. (in meters)
      */
-    public Pose2d getPose() {
+    public static Pose2d getPose() {
         return aprilTagsEstimator.getEstimatedPosition();
     }
 
