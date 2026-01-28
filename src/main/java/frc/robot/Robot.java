@@ -127,7 +127,8 @@ public class Robot extends TimedRobot {
     wheelControl();
     shooterControl();
 
-    shooter.setMotorPowers(0.2, 0.25);
+    shooter.setBottomMotorVoltage(5);
+    shooter.setTopMotorVoltage(5);
 
     /*
     SmartDashboard.putBoolean(
