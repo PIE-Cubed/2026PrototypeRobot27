@@ -38,8 +38,7 @@ public class Shooter {
     private final double FLYWHEEL_I = 0.0;
     private final double FLYWHEEL_D = 0.0;
 
-    private double prevShooterVelocity = 0;
-    private double prevShooterVoltage  = 0;
+    private double prevShooterVoltageFlywheel  = 0;
 
     // top motor runs slower than bottom motor for backspin
     private static final double SHOOTER_MOTOR_DELTA = .1;
@@ -108,35 +107,33 @@ public class Shooter {
 
     }
     
+
+
     public void setVelocity(double velocity)  {
-        double voltage;
-        double pidOutput;
+        double voltageFlywheel;
+        double pidOutputFlywheel;
     
 
-        if (velocity == prevShooterVelocity){
-            voltage = prevShooterVoltage;
-        }
-        else {
-            voltage = velocity/VELOCITY_TO_VOLT_RATIO;
-        }
+        voltageFlywheel = prevShooterVoltageFlywheel;
         
-        pidOutput = flywheelPIDController.calculate(flywheelMotorEncoder.getVelocity(), velocity);
-        voltage = voltage + pidOutput;
+        pidOutputFlywheel = flywheelPIDController.calculate(flywheelMotorEncoder.getVelocity(), velocity);
+        voltageFlywheel = voltageFlywheel + pidOutputFlywheel;
 
-        voltage = MathUtil.clamp(voltage, -12.0, 12.0);
-        flywheelMotor.setVoltage(voltage);
-        if (voltage >= 0.0) {
-            backspinMotor.setVoltage(voltage - SHOOTER_MOTOR_DELTA);
+        voltageFlywheel = MathUtil.clamp(voltageFlywheel, -12.0, 12.0);
+        flywheelMotor.setVoltage(voltageFlywheel);
+        if (voltageFlywheel >= 0.0) {
+            backspinMotor.setVoltage(voltageFlywheel - SHOOTER_MOTOR_DELTA);
         } 
         else {
-            backspinMotor.setVoltage(voltage + SHOOTER_MOTOR_DELTA);
+            backspinMotor.setVoltage(prevShooterVoltageFlywheel + SHOOTER_MOTOR_DELTA);
         }    
          
-        prevShooterVoltage  = voltage;
-        prevShooterVelocity = velocity;
+        prevShooterVoltageFlywheel  = voltageFlywheel;
         System.out.println("velocity" + flywheelMotorEncoder.getVelocity());
     }
 
+
+    
     /******************************************************************************************************
      * 
      * TEST PROGRAMS
