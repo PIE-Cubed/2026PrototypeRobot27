@@ -3,154 +3,165 @@ package frc.robot;
 import com.revrobotics.PersistMode;
 import com.revrobotics.RelativeEncoder;
 import com.revrobotics.ResetMode;
-import com.revrobotics.spark.SparkBase;
 import com.revrobotics.spark.SparkFlex;
-import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.config.SparkBaseConfig;
-import com.revrobotics.spark.config.SparkFlexConfig;
-import com.revrobotics.spark.config.SparkMaxConfig;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
+import com.revrobotics.spark.config.SparkFlexConfig;
 
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.PIDController;
-import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Rotation2d;
-import frc.robot.Constants.FieldConstants;
-import frc.robot.util.AllianceUtil;
+import edu.wpi.first.units.measure.Voltage;
+
+
+
 
 public class Shooter {
-    private final int FLYWHEEL_MOTOR_ID = 20;
-    private final int BACKSPIN_MOTOR_ID = 21;
+    private SparkFlex       topMotor;
+    private SparkBaseConfig topMotorConfig;
 
-    // backspin motor runs slower than flywheel motor to generate spin
-    private static final double BACKSPIN_POWER_DELTA = .1;
-    private static final double RPM_PER_VOLT = 550;
-    private static final double RPM_TO_POWER = 6175;
+    private SparkFlex       bottomMotor;
+    private SparkBaseConfig bottomMotorConfig;
+
+    private RelativeEncoder topMotorEncoder;
+    private RelativeEncoder bottomMotorEncoder;
+
+    private PIDController topPIDController;
+    private PIDController bottomPIDController;
+
+    // Motor IDs
+    private final int TOP_MOTOR_ID = 21;
+    private final int BOTTOM_MOTOR_ID = 20;
 
     // PID Values
-    private final double BACKSPIN_P = 0.007; // 0.0055
-    private final double BACKSPIN_I = 0.0;
-    private final double BACKSPIN_D = 0.0;
-    private final double BACKSPIN_TOLERANCE = 25;
+    private final double TOP_P = 0.0055;
+    private final double TOP_I = 0.0;
+    private final double TOP_D = 0.0;
 
-    private final double FLYWHEEL_P = 0.0055;
-    private final double FLYWHEEL_I = 0.0;
-    private final double FLYWHEEL_D = 0.0;
-    private final double FLYWHEEL_TOLERANCE = 25;
+    private final double BOTTOM_P = 0.0055;
+    private final double BOTTOM_I = 0.0;
+    private final double BOTTOM_D = 0.0;
 
-    public static enum ShooterTarget {
-        HUB,
-        PASS
-    }
+    private double prevShooterVelocity = 0;
+    private double prevShooterVoltage  = 0;
 
-    private SparkBase flywheelMotor = new SparkFlex(FLYWHEEL_MOTOR_ID, MotorType.kBrushless);
-    private SparkBaseConfig flywheelMotorConfig = new SparkFlexConfig();
 
-    private SparkBase backspinMotor = new SparkFlex(BACKSPIN_MOTOR_ID, MotorType.kBrushless);
-    private SparkBaseConfig backspinMotorConfig = new SparkFlexConfig();
-
-    private RelativeEncoder flywheelMotorEncoder;
-    private RelativeEncoder backspinMotorEncoder;
-
-    private PIDController flywheelPIDController;
-    private PIDController backspinPIDController;
-
-    private int flywheelAtSetpointCount = 0;
-    private int backspinAtSetpointCount = 0;
-
-    private Pose2d targetPose     = new Pose2d();
-    public static double targetDistance = 0;
+    // top motor runs slower than bottom motor for backspin
+    private static final double SHOOTER_MOTOR_DELTA = .1;
+    private static final double VELOCITY_TO_VOLT_RATIO = 550;
 
     public Shooter() {
-        flywheelMotorConfig.idleMode(IdleMode.kCoast)
-                           .inverted(false)
-                           .smartCurrentLimit(Robot.NEO_CURRENT_LIMIT);
+        topMotor       = new SparkFlex(TOP_MOTOR_ID, MotorType.kBrushless);
+        topMotorConfig = new SparkFlexConfig();
 
-        flywheelMotor.configure(flywheelMotorConfig, 
-                                ResetMode.kNoResetSafeParameters, 
-                                PersistMode.kPersistParameters);
-        
-        backspinMotorConfig.idleMode(IdleMode.kCoast)
-                           .inverted(true)
-                           .smartCurrentLimit(Robot.NEO_CURRENT_LIMIT);
+        bottomMotor       = new SparkFlex(BOTTOM_MOTOR_ID, MotorType.kBrushless);
+        bottomMotorConfig = new SparkFlexConfig();
 
-        backspinMotor.configure(backspinMotorConfig, 
-                                ResetMode.kNoResetSafeParameters, 
-                                PersistMode.kPersistParameters);
-                                
+        // TODO invert motor if needed
+        topMotorConfig.idleMode(IdleMode.kCoast);
+        topMotorConfig.inverted(true);
 
-        flywheelMotorEncoder = flywheelMotor.getEncoder();
-        backspinMotorEncoder = backspinMotor.getEncoder();
+        bottomMotorConfig.idleMode(IdleMode.kCoast);
+        bottomMotorConfig.inverted(false);
 
-        flywheelPIDController = new PIDController(FLYWHEEL_P, FLYWHEEL_I, FLYWHEEL_D);
-        flywheelPIDController.setTolerance(FLYWHEEL_TOLERANCE);
+        topMotor.configure(topMotorConfig, 
+                           ResetMode.kNoResetSafeParameters, 
+                           PersistMode.kPersistParameters);
 
-        backspinPIDController = new PIDController(BACKSPIN_P, BACKSPIN_I, BACKSPIN_D);
-        backspinPIDController.setTolerance(BACKSPIN_TOLERANCE);
+        bottomMotor.configure(bottomMotorConfig, 
+                              ResetMode.kNoResetSafeParameters, 
+                              PersistMode.kPersistParameters);
+
+        topMotorEncoder =    topMotor.getEncoder();
+        bottomMotorEncoder = bottomMotor.getEncoder();
+
+        topPIDController =    new PIDController(TOP_P, TOP_I, TOP_D);
+        bottomPIDController = new PIDController(BOTTOM_P, BOTTOM_I, BOTTOM_D);
     }
 
+    /**
+     * voltage should be -12 to 12
+     * @param voltage
+     */
+    public void setTopMotorVoltage(double voltage) {
+        topMotor.setVoltage(voltage);
+    }
+
+    /**
+     * voltage should be -12 to 12
+     * @param voltage
+     */
+    public void setBottomMotorVoltage(double voltage) {
+        bottomMotor.setVoltage(voltage);
+    }
+
+    /**
+     * speed ....
+     * @param speed
+     */
+    // TODO get conversion factor for speed
+    public void setTopTargetSpeed(double speed) {
+        
+    }
+
+    /**
+     * speed ....
+     * @param speed
+     */
+    // TODO get conversion factor for speed
+    public void setBottomTargetSpeed(double speed) {
+
+    }
+    
+    
+    
+    public void setVelocity(double velocity)  {
+        double voltage;
+        double pidOutput;
     
 
-    public int spinUp(double distance) {
-
-        return Robot.CONT;
-    }
-
-    public void setMotorPowers(double flywheelPower, double backspinPower) {
-        flywheelMotor.set(flywheelPower);
-        backspinMotor.set(backspinPower);
-    }
-
-    public int setFlywheelRPM(double targetRPM) {
-        double voltage = flywheelPIDController.calculate(flywheelMotorEncoder.getVelocity(), targetRPM);
-
-        flywheelMotor.setVoltage(voltage);
-
-        if (flywheelPIDController.atSetpoint()) {
-            flywheelAtSetpointCount += 1;
+        if (velocity == prevShooterVelocity){
+            voltage = prevShooterVoltage;
         }
         else {
-            flywheelAtSetpointCount = 0;
+            voltage = velocity/VELOCITY_TO_VOLT_RATIO;
         }
+        
+        pidOutput = bottomPIDController.calculate(bottomMotorEncoder.getVelocity(), velocity);
+        voltage = voltage + pidOutput;
 
-        if (flywheelAtSetpointCount >= 3) {
-            return Robot.DONE;
-        }
-
-        return Robot.CONT;
-    }
-
-    public int setBackspinRPM(double targetRPM) {
-        double voltage = backspinPIDController.calculate(backspinMotorEncoder.getVelocity(), targetRPM);
-
-        backspinMotor.setVoltage(voltage);
-
-        if (backspinPIDController.atSetpoint()) {
-            backspinAtSetpointCount += 1;
-        }
+        voltage = MathUtil.clamp(voltage, -12.0, 12.0);
+        bottomMotor.setVoltage(voltage);
+        if (voltage >= 0.0) {
+            topMotor.setVoltage(voltage - SHOOTER_MOTOR_DELTA);
+        } 
         else {
-            backspinAtSetpointCount = 0;
-        }
-
-        if (backspinAtSetpointCount >= 3) {
-            return Robot.DONE;
-        }
-
-        return Robot.CONT;
+            topMotor.setVoltage(voltage + SHOOTER_MOTOR_DELTA);
+        }    
+         
+        prevShooterVoltage  = voltage;
+        prevShooterVelocity = velocity;
+        System.out.println("velocity" + bottomMotorEncoder.getVelocity());
     }
-}
 
+
+
+    /******************************************************************************************************
+     * 
+     * TEST PROGRAMS
+     * 
+     ******************************************************************************************************/
         /* FOR MOTOR SET FUCNTION
-         * .1 power = 606 RPM
-         * .2 power = 1240 RPM
-         * .3 power = 1866 RPM
-         * .4 power = 2500 RPM
-         * .5 power = 3140 RPM
-         * .6 power = 3783 RPM
-         * .7 power =  4408 RPM
-         * .8 power =  5012 RPM
-         * .9 power = 5600 RPM
-         * 1 power =  6175 RPM
+         .1 volts = 606 RPM
+         * .2 volts = 1240 RPM
+         * .3 volts = 1866 RPM
+         * .4 volts = 2500 RPM
+         * .5 volts = 3140 RPM
+         * .6 volts = 3783 RPM
+         * .7 volts =  4408 RPM
+         * .8 volts =  5012 RPM
+         * .9 volts = 5600 RPM
+         * 1 volts =  6175 RPM
          * 
          * MOTORSETVOLTAGE (More Stable than SET FUNCTOIN)
          * volts  RPM    Delta   RPM/Volts
@@ -166,30 +177,19 @@ public class Shooter {
          * 10     5550   544     555
          * 11     6090   540     553.64
          * MAX 12 6155   065     512.92
+    
          */
+     public void testVoltageVsVelocity(double voltage)
+    {
+        double velocity;
 
-/*
-// code in case we have a turret
-public int aimAt(ShooterTarget target) {
-    if (target == ShooterTarget.HUB) {
-        if (AllianceUtil.isRedAlliance()) {
-            targetPose = FieldConstants.hubRedAlliance;
-        }
-        else {
-            targetPose = FieldConstants.hubBlueAlliance;
-        }
-    }
-    else if (target == ShooterTarget.PASS) {
-        if (AllianceUtil.isRedAlliance()) {
-            targetPose = new Pose2d(15.75, Odometry.getPose().getY(), new Rotation2d(0));
-        }
-        else {
-            targetPose = new Pose2d(1, Odometry.getPose().getY(), new Rotation2d(0));
-        }
-    }
 
-    // put turret pid control here
 
-    return Robot.CONT;
+        //bottomMotor.set(voltage);        
+        bottomMotor.setVoltage(voltage);
+        velocity = bottomMotorEncoder.getVelocity();
+        System.out.println("velocity = " + velocity + "    " + voltage);
+    
+    } 
+
 }
-*/
