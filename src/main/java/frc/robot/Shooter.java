@@ -61,7 +61,6 @@ public class Shooter {
         flywheelMotor       = new SparkFlex(FLYWHEEL_MOTOR_ID, MotorType.kBrushless);
         flywheelMotorConfig = new SparkFlexConfig();
 
-        // TODO invert motor if needed
         backspinMotorConfig.idleMode(IdleMode.kCoast);
         backspinMotorConfig.inverted(true);
 
