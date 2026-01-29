@@ -1,5 +1,6 @@
 package frc.robot;
 
+import com.fasterxml.jackson.databind.util.RootNameLookup;
 import com.revrobotics.PersistMode;
 import com.revrobotics.RelativeEncoder;
 import com.revrobotics.ResetMode;
@@ -11,6 +12,7 @@ import com.revrobotics.spark.config.SparkFlexConfig;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 public class Shooter {
     private SparkFlex       backspinMotor;
@@ -30,16 +32,23 @@ public class Shooter {
     private final int FLYWHEEL_MOTOR_ID = 20;
 
     // PID Values
-    private final double BACKSPIN_P = 0.0055;
-    private final double BACKSPIN_I = 0.0;
-    private final double BACKSPIN_D = 0.0;
+    private final double BACKSPIN_P         = 0.0055;
+    private final double BACKSPIN_I         = 0.0;
+    private final double BACKSPIN_D         = 0.0;
+    private final double BACKSPIN_TOLERANCE = 50.0;
 
-    private final double FLYWHEEL_P = 0.0055;
-    private final double FLYWHEEL_I = 0.0;
-    private final double FLYWHEEL_D = 0.0;
+    private final double FLYWHEEL_P         = 0.0055;
+    private final double FLYWHEEL_I         = 0.0;
+    private final double FLYWHEEL_D         = 0.0;
+    private final double FLYWHEEL_TOLERANCE = 50.0;
 
     private double prevShooterVelocity = 0;
     private double prevShooterVoltage  = 0;
+
+    private double prevFlywheelRPM     = 0;
+    private double prevFlywheelVoltage = 0;
+    private double prevBackspinRPM     = 0;
+    private double prevBackspinVoltage = 0;
 
     // top motor runs slower than bottom motor for backspin
     private static final double SHOOTER_MOTOR_DELTA = .1;
@@ -71,7 +80,20 @@ public class Shooter {
         flywheelMotorEncoder = flywheelMotor.getEncoder();
 
         backspinPIDController = new PIDController(BACKSPIN_P, BACKSPIN_I, BACKSPIN_D);
+        backspinPIDController.setTolerance(BACKSPIN_TOLERANCE);
+
         flywheelPIDController = new PIDController(FLYWHEEL_P, FLYWHEEL_I, FLYWHEEL_D);
+        flywheelPIDController.setTolerance(FLYWHEEL_TOLERANCE);
+    }
+
+    /**
+     * voltage should be -12 to 12
+     * @param flywheelVoltage
+     * @param backspinVoltage
+     */
+    public void setMotorVoltages(double flywheelVoltage, double backspinVoltage) {
+        setBottomMotorVoltage(flywheelVoltage);
+        setTopMotorVoltage(backspinVoltage);
     }
 
     /**
@@ -90,25 +112,64 @@ public class Shooter {
         flywheelMotor.setVoltage(voltage);
     }
 
-    /**
-     * speed ....
-     * @param speed
+    /*
+     * maybe something to do eventually
      */
-    // TODO get conversion factor for speed
-    public void setTopTargetSpeed(double speed) {
-        
+    public void setTargetArc(double height, double distance) {
+
     }
 
     /**
-     * speed ....
-     * @param speed
+     * Sets voltage of the backspin motor according to a target RPM.
+     * @param targetRPM Target RPM.
+     * @return Robot.DONE if current RPM is within tolerance, otherwise Robot.CONT.
      */
-    // TODO get conversion factor for speed
-    public void setBottomTargetSpeed(double speed) {
+    public int setBackspinTargetRPM(double targetRPM) {
+        double currentRPM = backspinMotorEncoder.getVelocity();
 
+        double voltage = backspinPIDController.calculate(currentRPM, targetRPM);
+
+        if (backspinPIDController.atSetpoint()) {
+            voltage = prevBackspinVoltage;
+        }
+
+        voltage = MathUtil.clamp(voltage, 0, 12);
+
+        backspinMotor.setVoltage(voltage);
+
+        prevBackspinVoltage = voltage;
+
+        if (backspinPIDController.atSetpoint()) {
+            SmartDashboard.putBoolean("Shooter/BackspinAtTargetRPM", true);
+            return Robot.DONE;
+        }
+
+        SmartDashboard.putBoolean("Shooter/BackspinAtTargetRPM", false);
+        return Robot.CONT;
+    }
+
+    /**
+     * Sets voltage of the flywheel motor according to a target RPM.
+     * @param targetRPM Target RPM.
+     * @return Robot.DONE if current RPM is within tolerance, otherwise Robot.CONT.
+     */
+    public int setFlywheelTargetRPM(double targetRPM) {
+        double currentRPM = flywheelMotorEncoder.getVelocity();
+
+        double voltage = flywheelPIDController.calculate(currentRPM, targetRPM);
+
+        flywheelMotor.setVoltage(voltage);
+
+        if (flywheelPIDController.atSetpoint()) {
+            SmartDashboard.putBoolean("Shooter/FlywheelAtTargetRPM", true);
+            return Robot.DONE;
+        }
+
+        SmartDashboard.putBoolean("Shooter/FlywheelAtTargetRPM", false);
+        return Robot.CONT;
     }
     
-    public void setVelocity(double velocity)  {
+    public void setVelocityWithDelta(double velocity)  {
         double voltage;
         double pidOutput;
     
@@ -137,6 +198,11 @@ public class Shooter {
         System.out.println("velocity" + flywheelMotorEncoder.getVelocity());
     }
 
+    public void stopMotors() {
+        flywheelMotor.stopMotor();
+        backspinMotor.stopMotor();
+    }
+
     /******************************************************************************************************
      * 
      * TEST PROGRAMS
@@ -154,16 +220,16 @@ public class Shooter {
 }
 
 /* FOR MOTOR SET FUCNTION
-* .1 volts = 606 RPM
-* .2 volts = 1240 RPM
-* .3 volts = 1866 RPM
-* .4 volts = 2500 RPM
-* .5 volts = 3140 RPM
-* .6 volts = 3783 RPM
-* .7 volts =  4408 RPM
-* .8 volts =  5012 RPM
-* .9 volts = 5600 RPM
-* 1 volts =  6175 RPM
+* .1 power = 606 RPM
+* .2 power = 1240 RPM
+* .3 power = 1866 RPM
+* .4 power = 2500 RPM
+* .5 power = 3140 RPM
+* .6 power = 3783 RPM
+* .7 power = 4408 RPM
+* .8 power = 5012 RPM
+* .9 power = 5600 RPM
+*  1 power = 6175 RPM
 * 
 * MOTORSETVOLTAGE (More Stable than SET FUNCTOIN)
 * volts  RPM    Delta   RPM/Volts

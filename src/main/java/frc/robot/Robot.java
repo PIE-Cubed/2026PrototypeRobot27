@@ -128,8 +128,9 @@ public class Robot extends TimedRobot {
     shooterControl();
 
     if (controls.getAButton()) {
-      shooter.setBottomMotorVoltage(3);
-      shooter.setTopMotorVoltage(3);
+      // shooter.setFlywheelTargetRPM(SmartDashboard.getNumber("Shooter/FlywheelTargetRPM", 0));
+      // shooter.setBackspinTargetRPM(SmartDashboard.getNumber("Shooter/BackspinTargetRPM", 0));
+      shooter.setMotorVoltages(3, 3);
     }
     else {
       shooter.stopMotors();
