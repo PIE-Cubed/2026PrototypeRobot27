@@ -13,8 +13,6 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 /** Add your docs here. */
 public class Hopper {
-    private final int MAX_BELT_STALL_LIMIT = 20;
-    private final int MAX_BELT_FREE_LIMIT  = 60;
     private final int INDEX_MOTOR_ID = 33;
     private final int BELT_MOTOR_ID  = 32;
 
@@ -25,7 +23,7 @@ public class Hopper {
     private SparkBaseConfig beltMotorConfig = new SparkMaxConfig();
 
     public Hopper() {
-        indexMotorConfig.inverted(false)
+        indexMotorConfig.inverted(true)
                         .smartCurrentLimit(Robot.NEO_CURRENT_LIMIT)
                         .idleMode(IdleMode.kBrake);
 
@@ -33,25 +31,23 @@ public class Hopper {
                              ResetMode.kNoResetSafeParameters, 
                              PersistMode.kPersistParameters);
                              
-        beltMotorConfig.inverted(false)
-                       .smartCurrentLimit(MAX_BELT_STALL_LIMIT, MAX_BELT_FREE_LIMIT) 
-                       .idleMode(IdleMode.kBrake);
+        beltMotorConfig.smartCurrentLimit(Robot.NEO_CURRENT_LIMIT)
+                       .idleMode(IdleMode.kBrake)
+                       .follow(INDEX_MOTOR_ID, true);
+                    //    .inverted(false);
 
-        beltMotor.configure(indexMotorConfig, 
+        beltMotor.configure(beltMotorConfig, 
                             ResetMode.kNoResetSafeParameters, 
                             PersistMode.kPersistParameters);
-
-        // TODO: Figure out a good speed for this later.
-        SmartDashboard.putNumber("Hopper/MotorPower", 1);
     }
 
     public void indexFuel() {
-        indexMotor.set(SmartDashboard.getNumber("Hopper/MotorPower", 0));
-        beltMotor.set(1);
+        indexMotor.setVoltage(12);
+        // beltMotor.setVoltage(12);
     }
 
     public void stopMotors() {
         indexMotor.stopMotor();
-        beltMotor.stopMotor();
+        // beltMotor.stopMotor();
     }
 }
