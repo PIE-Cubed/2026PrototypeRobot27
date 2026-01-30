@@ -42,7 +42,7 @@ public class Hopper {
     }
 
     public void indexFuel() {
-        indexMotor.setVoltage(12);
+        indexMotor.setVoltage(4);
         // beltMotor.setVoltage(12);
     }
 
