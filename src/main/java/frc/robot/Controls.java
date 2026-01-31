@@ -16,41 +16,42 @@ public class Controls {
     // Zorro Controller
 
     public double getForwardPowerFwdPositive() {
-        double powerFwdPos = driveController.getLeftY();
+        double powerFwdPos = driveController.getLeftY(); // The Zorro controller returns forward positive.
 
-        powerFwdPos = Math.pow(powerFwdPos, 3);
+        powerFwdPos = Math.pow(powerFwdPos, 3); // Raise to the power of 3 to help with small movements.
         
-        if (enablePrecisionDrive()) {
+        if (enablePrecisionDrive()) { // Reduce output if precisionDrive is enabled.
             powerFwdPos *= 0.231;
         }
 
-        return powerFwdPos;
+        return powerFwdPos; // We do not need to invert here as the Zorro already returns forward positive.
     }
 
 
     public double getStrafePowerLeftPositive() {
-        double powerRightPos = driveController.getLeftX();
+        double powerRightPos = driveController.getLeftX(); // The Zorro controller returns right positive.
 
-        powerRightPos = Math.pow(powerRightPos, 3);
+        powerRightPos = Math.pow(powerRightPos, 3); // Raise to the power of 3 to help with small movements.
         
-        if (enablePrecisionDrive()) {
+        if (enablePrecisionDrive()) { // Reduce output if precisionDrive is enabled.
             powerRightPos *= 0.231;
         }
-        return powerRightPos * -1;
+
+        return powerRightPos * -1; // We want left positive, so it is necessary to invert here.
     }
 
 
     public double getRotatePowerCcwPositive() {
-        double powerCwPos = driveController.getRightX();
+        double powerCwPos = driveController.getRightX(); // The Zorro controller returns right (clockwise) positive.
 
-        powerCwPos = Math.pow(powerCwPos, 3);
+        powerCwPos = Math.pow(powerCwPos, 3); // Raise to the power of 3 to help with small movements.
 
-        return powerCwPos * -1;
+        return powerCwPos * -1; // We want left (counter-clockwise) positive, so it is necessary to invert here.
     }
 
 
     public double getRightY() {
-        return driveController.getRightY();
+        return driveController.getRightY(); // The Zorro controller returns forward positive.
     }
 
     public boolean enablePrecisionDrive() {

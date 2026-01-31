@@ -41,16 +41,9 @@ public class Shooter {
     private final double FLYWHEEL_D         = 0.00005;
     private final double FLYWHEEL_TOLERANCE = 50.0;
 
-    private double prevShooterVelocity = 0;
-    private double prevShooterVoltage  = 0;
-
-    private double prevFlywheelRPM     = 0;
     private double prevFlywheelVoltage = 0;
-    private double prevBackspinRPM     = 0;
     private double prevBackspinVoltage = 0;
 
-    // top motor runs slower than bottom motor for backspin
-    private static final double SHOOTER_MOTOR_DELTA = .1;
     private static final double VELOCITY_TO_VOLT_RATIO = 540;
 
     public Shooter() {
@@ -153,28 +146,6 @@ public class Shooter {
 
         SmartDashboard.putNumber("Shooter/CurrentFlywheelRPM", currentFlywheelRPM);
         SmartDashboard.putNumber("Shooter/CurrentBackspinRPM", currentBackspinRPM);
-    }
-    
-    public void setVelocityWithDelta(double velocity)  {
-        double voltage;
-        double pidOutput;
-
-        voltage = prevShooterVoltage;
-        
-        pidOutput = flywheelPIDController.calculate(flywheelMotorEncoder.getVelocity(), velocity);
-        voltage = voltage + pidOutput;
-
-        voltage = MathUtil.clamp(voltage, -12.0, 12.0);
-        flywheelMotor.setVoltage(voltage);
-        if (voltage >= 0.0) {
-            backspinMotor.setVoltage(voltage - SHOOTER_MOTOR_DELTA);
-        }
-        else {
-            backspinMotor.setVoltage(voltage + SHOOTER_MOTOR_DELTA);
-        }
-        
-        prevShooterVoltage = voltage;
-        System.out.println("velocity" + flywheelMotorEncoder.getVelocity());
     }
 
     public void stopMotors() {

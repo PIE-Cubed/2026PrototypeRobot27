@@ -1,6 +1,6 @@
 package frc.robot;
 
-import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj.PowerDistribution;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.PowerDistribution.ModuleType;
@@ -70,11 +70,11 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void robotPeriodic() {
-    //odometry.updatePoseEstimators();
+    drive.updatePoseEstimator();
 
     //SmartDashboard.putNumber("Voltage", pdh.getVoltage());
 
-    //field2d.setRobotPose(Odometry.getPose());
+    field2d.setRobotPose(Drive.getPose());
 
     SmartDashboard.putData("Field", field2d);
 
@@ -190,13 +190,20 @@ public class Robot extends TimedRobot {
 
     double forwardPowerFwdPos = controls.getForwardPowerFwdPositive();
     double strafePowerLeftPos = controls.getStrafePowerLeftPositive();
-    double rotatePowerCcwPos = controls.getRotatePowerCcwPositive();
+    double rotatePowerCcwPos  = controls.getRotatePowerCcwPositive();
+    double rightStickY        = controls.getRightY();
+
+    Translation2d centerOfRotation = drive.getCenterOfRotation(rotatePowerCcwPos, rightStickY);
+
+    if (rightStickY > 0.2) {
+      rotatePowerCcwPos = rotatePowerCcwPos * -1; // we need to reverse the rotation power for rotating off of front wheels
+    }
 
     if (lockWheels) {
       drive.lockWheels();
     } 
     else {
-      drive.teleopDrive(forwardPowerFwdPos, strafePowerLeftPos, rotatePowerCcwPos, fieldDrive);
+      drive.teleopDrive(forwardPowerFwdPos, strafePowerLeftPos, rotatePowerCcwPos, fieldDrive, centerOfRotation);
     }
 
     if (resetGyro) {
