@@ -256,10 +256,10 @@ public class Drive {
         Translation2d centerOfRotation = centerLocation;
 
         if (rightStickY >= 0.2) {
-            if (rotatePowerCcwPos > 0) {
+            if (rotatePowerCcwPos < 0) {
                 centerOfRotation = frontRightLocation;
             }
-            else if (rotatePowerCcwPos < 0) {
+            else if (rotatePowerCcwPos > 0) {
                 centerOfRotation = Drive.frontLeftLocation;
             }
             else {
@@ -267,10 +267,10 @@ public class Drive {
             }
         }
         else if (rightStickY <= -0.2) {
-            if (rotatePowerCcwPos > 0) {
+            if (rotatePowerCcwPos < 0) {
                 centerOfRotation = Drive.backRightLocation;
             }
-            else if (rotatePowerCcwPos < 0) {
+            else if (rotatePowerCcwPos > 0) {
                 centerOfRotation = Drive.backLeftLocation;
             }
             else {
