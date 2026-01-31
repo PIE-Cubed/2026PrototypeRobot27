@@ -1,5 +1,6 @@
 package frc.robot;
 
+import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj.PowerDistribution;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.PowerDistribution.ModuleType;
@@ -180,13 +181,42 @@ public class Robot extends TimedRobot {
 
     double forwardPowerFwdPos = controls.getForwardPowerFwdPositive();
     double strafePowerLeftPos = controls.getStrafePowerLeftPositive();
-    double rotatePowerCcwPos = controls.getRotatePowerCcwPositive();
+    double rotatePowerCcwPos  = controls.getRotatePowerCcwPositive();
+    double rightStickY        = controls.getRightY();
+
+    Translation2d centerOfRotation = Drive.centerLocation;
+
+    if (rightStickY >= 0.2) {
+      if (rotatePowerCcwPos > 0) {
+        centerOfRotation = Drive.frontRightLocation;
+      }
+      else if (rotatePowerCcwPos < 0) {
+        centerOfRotation = Drive.frontLeftLocation;
+      }
+      else {
+        centerOfRotation = Drive.centerLocation;
+      }
+    }
+    else if (rightStickY <= -0.2) {
+      if (rotatePowerCcwPos > 0) {
+        centerOfRotation = Drive.backRightLocation;
+      }
+      else if (rotatePowerCcwPos < 0) {
+        centerOfRotation = Drive.backLeftLocation;
+      }
+      else {
+        centerOfRotation = Drive.centerLocation;
+      }
+    }
+    else {
+      centerOfRotation = Drive.centerLocation;
+    }
 
     if (lockWheels) {
       drive.lockWheels();
     } 
     else {
-      drive.teleopDrive(forwardPowerFwdPos, strafePowerLeftPos, rotatePowerCcwPos, fieldDrive);
+      drive.teleopDrive(forwardPowerFwdPos, strafePowerLeftPos, rotatePowerCcwPos, fieldDrive, centerOfRotation);
     }
 
     if (resetGyro) {

@@ -138,10 +138,45 @@ public class Drive {
 
         SwerveDriveKinematics.desaturateWheelSpeeds(swerveModuleStates, MAX_WHEEL_POWER);
 
-        frontLeft.setDesiredState(swerveModuleStates[0], true);
-        frontRight.setDesiredState(swerveModuleStates[1], true);
-        backLeft.setDesiredState(swerveModuleStates[2], true);
-        backRight.setDesiredState(swerveModuleStates[3], true);
+        setModuleStates(swerveModuleStates, true);
+    }
+
+    /**
+     * <p> Drive in teleop, either relative to the robot or the field
+     * <p> Allows a center of rotation different from the center of the robot
+     * @param forwardPower Positive goes forward
+     * @param strafePower Positive goes right
+     * @param rotatePower Positive is counter clockwise (might be clockwise)
+     * @param fieldDrive Whether to drive with field relative speeds
+     * @param centerOfRotation The offset for the center of rotation (in meters)
+     */
+    public void teleopDrive(double forwardPower, double strafePower, double rotatePower, boolean fieldDrive, Translation2d centerOfRotation) {
+        /*
+         * FieldRelativeSpeeds:
+         *  Positive for away from alliance wall
+         *  Positive for left from alliance wall
+         *  Positive for counter clockwise
+         *  0 for facing down the field, counter clockwise positive
+         * ChassisSpeeds:
+         *  Positive for forward (forwardPower)
+         *  Positive for left (strafePower)
+         *  Positive for counter clockwise (rotatePower) (might be clockwise)
+         */
+
+        // System.out.println("fwd" + forwardPower + " ---- strf" + strafePower*-1 + " ---- rot:" + rotatePower);
+
+        SwerveModuleState[] swerveModuleStates =
+            swerveDriveKinematics.toSwerveModuleStates(
+                fieldDrive 
+                ? ChassisSpeeds.fromFieldRelativeSpeeds(forwardPower, strafePower, rotatePower, new Rotation2d( getYawRadians() )) 
+                : new ChassisSpeeds(forwardPower, strafePower, rotatePower),
+                centerOfRotation
+        );
+
+        SwerveDriveKinematics.desaturateWheelSpeeds(swerveModuleStates, MAX_WHEEL_POWER);
+
+        // The SwerveModuleStates array index used must match the order from the SwerveDriveKinematics instantiation
+        setModuleStates(swerveModuleStates, true);
     }
 
     public double getYawRadians() {
@@ -177,6 +212,18 @@ public class Drive {
         frontRight.setDesiredState(new SwerveModuleState(0, new Rotation2d( -Math.PI / 4 )), false);
         backLeft.setDesiredState(new SwerveModuleState(0, new Rotation2d( -Math.PI / 4 )), false);
         backRight.setDesiredState(new SwerveModuleState(0, new Rotation2d( Math.PI / 4 )), false);       
+    }
+
+    /**
+     * Sets module state
+     * @param moduleStates Input module states
+     * @param optimize Whether to optimize the state or use absolute positions
+     */
+    public void setModuleStates(SwerveModuleState[] moduleStates, boolean optimize) {
+        frontLeft.setDesiredState(moduleStates[0], optimize);
+        frontRight.setDesiredState(moduleStates[1], optimize);
+        backLeft.setDesiredState(moduleStates[2], optimize);
+        backRight.setDesiredState(moduleStates[3], optimize);
     }
 
     /**
