@@ -15,33 +15,19 @@ import org.photonvision.targeting.PhotonTrackedTarget;
 import edu.wpi.first.apriltag.AprilTagFieldLayout;
 import edu.wpi.first.apriltag.AprilTagFields;
 import edu.wpi.first.math.Matrix;
-import edu.wpi.first.math.VecBuilder;
-import edu.wpi.first.math.Vector;
-import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
-import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Rotation3d;
-import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.math.geometry.Transform3d;
-import edu.wpi.first.math.kinematics.SwerveDriveOdometry;
-import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.math.util.Units;
-import frc.robot.util.Logger;
 
 /** Add your docs here. */
 public class Odometry {
-    public static int algaeHeight = 2;
     public static List<PhotonPipelineResult> cameraResults;
     public static PhotonPipelineResult       latestResult;
 
     private final int REQUIRED_APRILTAGS = 2; // Number of required AprilTags to update the AprilTag estimator
     private final double MAX_YAW_RATE_DEGREES = 360; // Maximum angular velocity(degrees/s) to update AprilTag estimator
-
-    // Standard deviations(trust values) for encoders and April Tags
-    // The lower the numbers the more trustworthy the prediction from that source is
-    private final Vector<N3> ENCODER_STD_DEV  = VecBuilder.fill(0.1, 0.1, 0.1);
-    private final Vector<N3> APRILTAG_STD_DEV = VecBuilder.fill(0.3, 0.3, 0.5);
 
     // Distances from bottom center of robot to each camera
     // When rotation is 0 for all axes the Z axis is parallel to the front of the robot.
@@ -52,22 +38,20 @@ public class Odometry {
     // private final Transform3d ROBOT_TO_CAMERA3 = new Transform3d(0, 0, 0, new Rotation3d(0, 0, 0));
     // private final Transform3d ROBOT_TO_CAMERA4 = new Transform3d(0, 0, 0, new Rotation3d(0, 0, 0));
 
-    // Estimators
-    private SwerveDriveOdometry encoderEstimator;        // Might not need this as aprilTagsEstimator also uses the encoders
-    private static SwerveDrivePoseEstimator aprilTagsEstimator;
+    // Vision estimators
     private PhotonPoseEstimator camera1PoseEstimator; // Photon Vision estimators
     // private PhotonPoseEstimator camera2PoseEstimator; //
     // private PhotonPoseEstimator camera3PoseEstimator; //
     // private PhotonPoseEstimator camera4PoseEstimator; //
 
     // Photon Vision cameras
-    private PhotonCamera camera1;
+    private static PhotonCamera camera1;
     private List<PhotonPipelineResult> camera1Results;
-    // private PhotonCamera camera2;
+    // private static PhotonCamera camera2;
     // private List<PhotonPipelineResult> camera2Results;
-    // private PhotonCamera camera3;
+    // private static PhotonCamera camera3;
     // private List<PhotonPipelineResult> camera3Results;
-    // private PhotonCamera camera4;
+    // private static PhotonCamera camera4;
     // private List<PhotonPipelineResult> camera4Results;
 
     private EstimatedRobotPose camera1Pose3d;
@@ -77,9 +61,6 @@ public class Odometry {
     
     public Drive drive;
 
-    private Pose2d lastPose = new Pose2d();
-    private Pose2d currPose = new Pose2d();
-
     public Odometry(Drive drive) {
         this.drive = drive;
 
@@ -88,25 +69,6 @@ public class Odometry {
         // camera2 = new PhotonCamera("camera2");
         // camera3 = new PhotonCamera("camera3");
         // camera4 = new PhotonCamera("camera4");
-
-        SwerveModulePosition[] initialPosition =  drive.getModulePositions();
-        Rotation2d initialRotation = new Rotation2d(drive.getYawRadians());
-
-        encoderEstimator = new SwerveDriveOdometry(
-            drive.swerveDriveKinematics, 
-            initialRotation, 
-            initialPosition, 
-            new Pose2d(0, 0, new Rotation2d(0))
-        );
-
-        aprilTagsEstimator = new SwerveDrivePoseEstimator(
-            drive.swerveDriveKinematics, 
-            initialRotation, 
-            initialPosition, 
-            new Pose2d(0, 0, new Rotation2d(0)), 
-            ENCODER_STD_DEV, 
-            APRILTAG_STD_DEV
-        );
 
         // Instantiate the pose estimators for each camera
         camera1PoseEstimator = new PhotonPoseEstimator(
@@ -131,27 +93,10 @@ public class Odometry {
     }
     
     /**
-     * <p> Updates the pose estimators. Calling this outside of robot periodic is unnecesary.
-     * <p> Do not run updateUnreadResults() beforehand as it will remove all unread results
+     * <p> Updates the pose estimators. Calling this outside of robotPeriodic is unnecesary.
+     * <p> Do not run updateUnreadResults() beforehand as it will remove all unread results afterwards.
      */
-    public void updatePoseEstimators() {
-        /*
-         * Limelight & encoder pose estimation
-         */
-        // Backup pipeline, so it can be reverted later
-        // Change pipeline to allTags so we can use them all 
-        //int oldPipeline = (int) LimelightHelpers.getCurrentPipelineIndex("limelight");
-        //LimelightHelpers.setPipelineIndex("limelight", 0);
-
-        SwerveModulePosition[] currentPosition = drive.getModulePositions();
-        Rotation2d currentRotation = new Rotation2d(drive.getYawRadians());
-        
-        // Encoder Estimator
-        encoderEstimator.update(currentRotation, currentPosition);
-
-        // Update vision estimator with encoder data
-        aprilTagsEstimator.update(currentRotation, currentPosition);
-
+    public void updateVisionEstimators() {
         camera1Results = camera1.getAllUnreadResults();
         cameraResults = camera1Results;
 
@@ -168,13 +113,6 @@ public class Odometry {
                 // Checking if the camera sees enough apriltags while moving slow enough to get a good position estimate
                 if ((newResult.targets.size() >= REQUIRED_APRILTAGS) && (drive.getYawRateDegrees() <= MAX_YAW_RATE_DEGREES)) {
                     camera1Pose3d = camera1PoseEstimator.update(newResult).get(); // Grab estimated Pose3d from camera
-    
-                    // Add vision data to estimator
-                    aprilTagsEstimator.addVisionMeasurement(camera1Pose3d.estimatedPose.toPose2d(), // Estimated pose
-                                                            camera1Pose3d.timestampSeconds, // Time of sample
-                                                            // Standard deviation (inaccuracy) of the camera
-                                                            // camera1.getCameraMatrix().get().extractColumnVector(0)
-                                                            camera1.getCameraMatrix().orElse(new Matrix<N3, N3>(new SimpleMatrix(3, 3))).extractColumnVector(0));
                 }
             }
         }
@@ -261,18 +199,15 @@ public class Odometry {
             }
         }
         */
-
-        lastPose = currPose;
-        currPose = getPose();
     }
- 
-    /**
-     * </p> Gets the current encoder estimated position.
-     * 
-     * @return The estimated Pose. (in meters)
-     */
-    public Pose2d getEncoderPose() {
-        return encoderEstimator.getPoseMeters();
+
+    public static List<Matrix<N3, N3>> getAllStdDevs() {
+        return List.of(
+            camera1.getCameraMatrix().orElse(new Matrix<N3, N3>(new SimpleMatrix(3, 3)))
+            // camera2.getCameraMatrix().orElse(new Matrix<N3, N3>(new SimpleMatrix(3, 3))),
+            // camera3.getCameraMatrix().orElse(new Matrix<N3, N3>(new SimpleMatrix(3, 3))),
+            // camera4.getCameraMatrix().orElse(new Matrix<N3, N3>(new SimpleMatrix(3, 3)))
+        );
     }
 
     /**
@@ -282,32 +217,8 @@ public class Odometry {
      * 
      * @return The estimated Pose. (in meters)
      */
-    public static Pose2d getPose() {
-        return aprilTagsEstimator.getEstimatedPosition();
-    }
-
-    /**
-     * </p> Resets the estimators to a given pose.
-     * </p> Gyro angle and swerve module positions don't have to be reset beforehand
-     *      as the estimators automatically creates offsets.
-     * 
-     * @param newPose The Pose2d to reset to.
-    */
-    public void reset(Pose2d newPose) {
-        SwerveModulePosition[] currentPosition = drive.getModulePositions();
-        Rotation2d gyro = new Rotation2d(drive.getYawRadians());
-
-        encoderEstimator.resetPosition(
-            gyro,
-            currentPosition,
-            newPose
-        );
-
-        aprilTagsEstimator.resetPosition(
-            gyro, 
-            currentPosition, 
-            newPose
-        );
+    public EstimatedRobotPose getVisionPose() {
+        return camera1Pose3d;
     }
 
     /**
@@ -377,16 +288,6 @@ public class Odometry {
         }
 
         return getAprilTagDistanceToCamera().plus(ROBOT_TO_CAMERA1.inverse());
-    }
-
-    /**
-     * @param fieldRelative
-     * @return
-     */
-    public Transform2d getVelocity() {
-        Transform2d velocityMeters = currPose.minus(lastPose);
-
-        return velocityMeters;
     }
 
     /**
@@ -468,49 +369,4 @@ public class Odometry {
      *                                      TEST FUNCTIONS
      * 
      *******************************************************************************************/
-    /**
-     * <p> Prints the current estimated pose from the encoders
-    */
-     public void printEncoderEstimatorPose() {
-        printPose(getEncoderPose());
-    }
-    /**
-     * <p> Prints the current estimated pose from the AprilTags
-    */
-    public void printAprilTagEstimatorPose() {
-        printPose(getPose());
-    }
-    /**
-     * <p> Prints the given pose
-    */
-    public void printPose(Pose2d pose) {
-        Rotation2d rotation = pose.getRotation();
-
-        System.out.println(
-            "Field Position: (" + pose.getX() + ", " + pose.getY() + ")\n" +
-            "Field Rotation: (" + rotation.getDegrees() + "deg, " + rotation.getRadians() + "rad"
-        );
-    }
-
-    public void logPeriodic() {
-        Logger.logStruct("Odometry/RobotPose", getPose());
-
-        /*
-        if (cameraResults == null || cameraResults.isEmpty()) {
-            DogLog.log("Odometry/RobotPose", getAprilTagsPose());
-            return;
-        }
-
-        if (!cameraResults.get(camera1Results.size() - 1).hasTargets()) {
-            DogLog.log("Odometry/RobotPose", getAprilTagsPose());
-            return;
-        }
-
-        DogLog.log("Odometry/RobotPose", getAprilTagsPose());
-        //DogLog.log("Odometry/AprilTag/RobotToPrimaryTag", getAprilTagDistance());
-        //DogLog.log("Odometry/AprilTag/CameraToPrimaryTag", getAprilTagDistanceToCamera());
-        //DogLog.log("Odometry/AprilTag/PrimaryTagID", cameraResults.get(camera1Results.size() - 1).getBestTarget().fiducialId);
-        //DogLog.log("Odometry/AprilTag/VisibleTags", cameraResults.get(camera1Results.size() - 1).getTargets().size());
-        */
-    }
 }

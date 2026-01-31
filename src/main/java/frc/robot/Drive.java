@@ -1,17 +1,27 @@
 package frc.robot;
 
+import org.photonvision.EstimatedRobotPose;
+
 import com.studica.frc.AHRS;
 import com.studica.frc.AHRS.NavXComType;
 
 import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.Matrix;
+import edu.wpi.first.math.VecBuilder;
+import edu.wpi.first.math.Vector;
 import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
+import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
+import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.math.util.Units;
+import edu.wpi.first.wpilibj.Timer;
 
 public class Drive {
     public static final double SWERVE_DIST_FROM_CENTER = 0.29845;
@@ -34,6 +44,18 @@ public class Drive {
     private final double ROTATE_D = 0.0;
 
     private final double MAX_WHEEL_POWER = 1;
+
+    // Standard deviations (trust values) for encoders and April Tags
+    // The lower the numbers the more trustworthy the prediction from that source is
+    private final Vector<N3> ENCODER_STD_DEV  = VecBuilder.fill(0.1, 0.1, 0.1);
+    private final Vector<N3> APRILTAG_STD_DEV = VecBuilder.fill(0.3, 0.3, 0.5);
+
+    private static SwerveDrivePoseEstimator aprilTagsEstimator;
+
+    private Pose2d lastPose = new Pose2d();
+    private Pose2d currPose = new Pose2d();
+
+    private Timer timer;
 
     private AHRS ahrs;
 
@@ -70,6 +92,29 @@ public class Drive {
         backRight  = new SwerveModule(10, 11, false);
 
         rotatePID = new PIDController(ROTATE_P, ROTATE_I, ROTATE_D);
+
+        timer = new Timer();
+
+        SwerveModulePosition[] initialPosition = getModulePositions();
+        Rotation2d initialRotation = new Rotation2d(getYawRadians());
+
+        // encoderEstimator = new SwerveDriveOdometry(
+        //     swerveDriveKinematics, 
+        //     initialRotation, 
+        //     initialPosition, 
+        //     new Pose2d(0, 0, new Rotation2d(0))
+        // );
+
+        aprilTagsEstimator = new SwerveDrivePoseEstimator(
+            swerveDriveKinematics, 
+            initialRotation, 
+            initialPosition, 
+            new Pose2d(0, 0, new Rotation2d(0)), 
+            ENCODER_STD_DEV, 
+            APRILTAG_STD_DEV
+        );
+
+        timer.restart();
     }
 
     public void teleopDrive(double forwardPowerFwdPos, double strafePowerLeftPos, double rotatePowerCcwPos, boolean fieldDrive) {
@@ -158,5 +203,68 @@ public class Drive {
             backLeft.getModulePosition(),
             backRight.getModulePosition()
         };
+    }
+
+    public void updatePoseEstimator() {
+        SwerveModulePosition[] currentPosition = getModulePositions();
+        Rotation2d currentRotation = new Rotation2d(getYawRadians());
+        
+        // Update vision estimator with encoder data
+        aprilTagsEstimator.updateWithTime(timer.get(), currentRotation, currentPosition);
+        
+        lastPose = currPose;
+        currPose = getPose();
+    }
+
+    /**
+     * Adds a vision pose estimate to the pose estimator.
+     * Does not need to be called every loop as long as updatePoseEstimator is called.
+     * @param visionEst The estimated pose from the cameras.
+     */
+    public void addVisionMeasurement(EstimatedRobotPose visionEst, Matrix<N3, N3> stdDevs) {
+        aprilTagsEstimator.addVisionMeasurement(
+            visionEst.estimatedPose.toPose2d(),
+            visionEst.timestampSeconds,
+            stdDevs.extractColumnVector(0) // Standard deviations of the camera
+        );
+    }
+    
+    /**
+     * </p> Resets the estimator to a given pose.
+     * </p> Gyro angle and swerve module positions don't have to be reset beforehand
+     *      as the estimators automatically creates offsets.
+     * 
+     * @param newPose The Pose2d to reset to.
+     */
+    public void reset(Pose2d newPose) {
+        SwerveModulePosition[] currentPosition = getModulePositions();
+        Rotation2d gyro = new Rotation2d(getYawRadians());
+
+        aprilTagsEstimator.resetPosition(
+            gyro, 
+            currentPosition, 
+            newPose
+        );
+    }
+
+    /**
+     * </p> Gets the current AprilTag-assisted field position.
+     *      If there is no vision estimate it relies on encoder pose.
+     * </p> Refer to the WPILib docs for specifics on field-based odometry.
+     * 
+     * @return The estimated Pose. (in meters)
+     */
+    public static Pose2d getPose() {
+        return aprilTagsEstimator.getEstimatedPosition();
+    }
+    
+    /**
+     * Returns the current velocity of the robot.
+     */
+    public Transform2d getVelocity() {
+        // Multiplied by the ammount of loops per second to get meters per second
+        Transform2d velocityMeters = currPose.minus(lastPose).times(50);
+
+        return velocityMeters;
     }
 }

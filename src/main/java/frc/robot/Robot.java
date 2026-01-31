@@ -1,6 +1,5 @@
 package frc.robot;
 
-import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.PowerDistribution;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.PowerDistribution.ModuleType;
@@ -70,11 +69,11 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void robotPeriodic() {
-    //odometry.updatePoseEstimators();
+    drive.updatePoseEstimator();
 
     //SmartDashboard.putNumber("Voltage", pdh.getVoltage());
 
-    //field2d.setRobotPose(Odometry.getPose());
+    field2d.setRobotPose(Drive.getPose());
 
     SmartDashboard.putData("Field", field2d);
 
