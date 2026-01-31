@@ -252,6 +252,38 @@ public class Drive {
         };
     }
 
+    public Translation2d getCenterOfRotation(double rotatePowerCcwPos, double rightStickY) {
+        Translation2d centerOfRotation = centerLocation;
+
+        if (rightStickY >= 0.2) {
+            if (rotatePowerCcwPos > 0) {
+                centerOfRotation = frontRightLocation;
+            }
+            else if (rotatePowerCcwPos < 0) {
+                centerOfRotation = Drive.frontLeftLocation;
+            }
+            else {
+                centerOfRotation = Drive.centerLocation;
+            }
+        }
+        else if (rightStickY <= -0.2) {
+            if (rotatePowerCcwPos > 0) {
+                centerOfRotation = Drive.backRightLocation;
+            }
+            else if (rotatePowerCcwPos < 0) {
+                centerOfRotation = Drive.backLeftLocation;
+            }
+            else {
+                centerOfRotation = Drive.centerLocation;
+            }
+        }
+        else {
+            centerOfRotation = Drive.centerLocation;
+        }
+
+        return centerOfRotation;
+    }
+
     public void updatePoseEstimator() {
         SwerveModulePosition[] currentPosition = getModulePositions();
         Rotation2d currentRotation = new Rotation2d(getYawRadians());
