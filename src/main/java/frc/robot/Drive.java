@@ -1,7 +1,17 @@
 package frc.robot;
 
+import java.util.List;
+
 import org.photonvision.EstimatedRobotPose;
 
+import com.pathplanner.lib.config.RobotConfig;
+import com.pathplanner.lib.path.GoalEndState;
+import com.pathplanner.lib.path.IdealStartingState;
+import com.pathplanner.lib.path.PathConstraints;
+import com.pathplanner.lib.path.PathPlannerPath;
+import com.pathplanner.lib.path.Waypoint;
+import com.pathplanner.lib.trajectory.PathPlannerTrajectory;
+import com.pathplanner.lib.trajectory.PathPlannerTrajectoryState;
 import com.studica.frc.AHRS;
 import com.studica.frc.AHRS.NavXComType;
 
@@ -37,6 +47,49 @@ public class Drive {
     private SwerveModule frontRight;
     private SwerveModule backLeft;
     private SwerveModule backRight;
+
+    // on-the-fly drive variables
+    private final double ROBOT_MASS_KG = 37; // robot mass in kilograms (for pathPlanner)
+    private final double ROBOT_MOI     = 6.31; // robot moment of inertia, from the cad so approximate (for pathPlanner)
+    private PathPlannerPath       otfPath; // OTF means on-the-fly
+    private PathPlannerTrajectory otfTrajectory;
+    private boolean               otfFirstTime = true;
+    private Timer                 otfTimer;
+
+    // AprilTag PID controllers
+    private PIDController otfStrafePID;
+    private PIDController otfForwardPID;
+    private PIDController otfRotatePID;
+    private PIDController choreoRotatePID;
+
+    // OTF PID values
+    private final double OTF_S_P = 3;
+    private final double OTF_S_I = 0;
+    private final double OTF_S_D = 0;
+    private final double OTF_S_I_RANGE = 0;
+    private final double OTF_S_I_ZONE = 0;
+
+    private final double OTF_F_P = 3;
+    private final double OTF_F_I = 0;
+    private final double OTF_F_D = 0;
+    private final double OTF_F_I_RANGE = 0;
+    private final double OTF_F_I_ZONE = 0;
+
+    private final double OTF_R_P = 0.1;
+    private final double OTF_R_I = 0;
+    private final double OTF_R_D = 0;
+    private final double OTF_R_I_RANGE = 0;
+    private final double OTF_R_I_ZONE = 0;
+
+    private final double CHOREO_R_P = 0.8;
+    private final double CHOREO_R_I = 0;
+    private final double CHOREO_R_D = 0;
+    private final double CHOREO_R_I_RANGE = 0;
+    private final double CHOREO_R_I_ZONE = 0;
+
+    private final double OTF_SF_TOLERANCE = 0;
+    private final double OTF_R_TOLERANCE = 0;
+    private final double CHOREO_R_TOLERANCE = 0;
 
     private PIDController rotatePID;
     private final double ROTATE_P = 0.009;
@@ -92,6 +145,29 @@ public class Drive {
         backRight  = new SwerveModule(10, 11, false);
 
         rotatePID = new PIDController(ROTATE_P, ROTATE_I, ROTATE_D);
+
+        // Strafe PID for OTF drive
+        otfStrafePID = new PIDController(OTF_S_P, OTF_S_I, OTF_S_D);
+        otfStrafePID.setTolerance(OTF_SF_TOLERANCE);
+        otfStrafePID.setIntegratorRange(-OTF_S_I_RANGE, OTF_S_I_RANGE);
+        otfStrafePID.setIZone(OTF_S_I_ZONE);
+
+        // Forward PID for OTF drive
+        otfForwardPID = new PIDController(OTF_F_P, OTF_F_I, OTF_F_D);
+        otfForwardPID.setTolerance(OTF_SF_TOLERANCE);
+        otfForwardPID.setIntegratorRange(-OTF_F_I_RANGE, OTF_F_I_RANGE); 
+        otfForwardPID.setIZone(OTF_F_I_ZONE);
+        
+        // Rotate PID for OTF drive
+        otfRotatePID = new PIDController(OTF_R_P, OTF_R_I, OTF_R_D);
+        otfRotatePID.setTolerance(OTF_R_TOLERANCE);
+        otfRotatePID.setIntegratorRange(-OTF_R_I_RANGE, OTF_R_I_RANGE);
+        otfRotatePID.setIZone(OTF_R_I_ZONE);
+
+        choreoRotatePID = new PIDController(CHOREO_R_P, CHOREO_R_I, CHOREO_R_D);
+        choreoRotatePID.setTolerance(CHOREO_R_TOLERANCE);
+        choreoRotatePID.setIntegratorRange(-CHOREO_R_I_RANGE, CHOREO_R_I_RANGE);
+        choreoRotatePID.setIZone(CHOREO_R_I_ZONE);
 
         timer = new Timer();
 
@@ -177,6 +253,172 @@ public class Drive {
 
         // The SwerveModuleStates array index used must match the order from the SwerveDriveKinematics instantiation
         setModuleStates(swerveModuleStates, true);
+    }
+
+    /**
+     * Drives using velocities instead of a -1 to 1 value, either relative to the robot or the field. Check SwerveModule.java for max velocity.
+     * (this actually uses the odometry instead of the AHRS so it is consistently facing one direction)
+     * @param forwardMPS Positive goes forward or towards the opposite alliance wall
+     * @param strafeMPS Positive goes right or towards your alliance's right wall
+     * @param rotateDPS Positive is counter clockwise (might be clockwise actually)
+     * @param fieldDrive Whether to drive with field relative speeds
+     * @param isRedAlliance Whether the robot is on the red alliance or not. Set to false if using for autonomous. (if true, changes robot rotation by 180 degrees so it is facing the other way)
+     */
+    public void velocityDrive(double forwardMPS, double strafeMPS, double rotateDPS, boolean fieldDrive, boolean isRedAlliance) {
+        /*
+         * FieldRelativeSpeeds:
+         *  Positive for away from your alliance wall
+         *  Positive for away from your alliance's right wall
+         *  Positive for counter clockwise
+         *  0 for facing down the field, counter clockwise positive
+         * ChassisSpeeds:
+         *  Positive for forward, in meters per second (strafeMPS)
+         *  Positive for left, in meters per second (strafeMPS)
+         *  Positive for counter clockwise rotation in degrees per second (rotateDPS)
+         */
+        ChassisSpeeds robotSpeeds = new ChassisSpeeds(
+            forwardMPS / SwerveModule.MAX_DRIVE_VEL_MPS,
+            strafeMPS / SwerveModule.MAX_DRIVE_VEL_MPS,
+            rotateDPS / Units.degreesToRadians(SwerveModule.MAX_ROTATE_VEL_DPS)
+        );
+
+        Rotation2d fieldRotation;
+
+        if (isRedAlliance) {
+            fieldRotation = getPose().getRotation().rotateBy(new Rotation2d(180));
+        }
+        else {
+            fieldRotation = getPose().getRotation();
+        }
+
+        SwerveModuleState[] swerveModuleStates =
+            swerveDriveKinematics.toSwerveModuleStates(
+                fieldDrive 
+                ? ChassisSpeeds.fromFieldRelativeSpeeds(robotSpeeds, fieldRotation)
+                : robotSpeeds
+            );
+
+        SwerveDriveKinematics.desaturateWheelSpeeds(swerveModuleStates, MAX_WHEEL_POWER);
+
+        // Check for deadzone
+        setModuleStates(swerveModuleStates, true);
+    }
+
+    /**
+     * <p> Drives the robot to a target pose on the field.
+     * <p> The PID controllers are tuned for PathPlanner trajectory samples,
+     *     not for large movements which driveToAprilTag's PIDs are tuned for.
+     * <p> OTF means on-the-fly
+     * @param targetPose
+     * The target robot pose to drive to based on field coordinates (x = 0, y = 0 at the blue alliance's right corner from blue driver perspective)
+     * TODO apparently pathplanner already gives you chassisSpeeds so you don't need PIDs, TEST THIS IMMEDIATELY
+     */
+    public int otfDriveTo(Pose2d targetPose) {
+        Pose2d pose = getPose();
+
+        if (otfForwardPID.atSetpoint() && otfStrafePID.atSetpoint() && otfRotatePID.atSetpoint() &&
+            otfTimer.get() >= otfTrajectory.getTotalTimeSeconds()) {
+            
+            System.out.println("OTF drive finished");
+
+            otfFirstTime = true;
+
+            stopWheels();
+
+            otfTimer.stop();
+            otfTimer.reset();
+
+            return Robot.DONE;
+        }
+
+        if (otfFirstTime == true) {
+            Pose2d initialPose = getPose();
+
+            //System.out.println("yaw rate: " + getYawRate());
+            //System.out.println("initial pose: " + initialPose);
+
+            List<Waypoint> waypoints = PathPlannerPath.waypointsFromPoses(
+                initialPose,
+                // initialPose.interpolate(targetPose, 0.5),
+                targetPose
+            );
+
+            // for (Waypoint point : waypoints) {
+            //     System.out.println("waypoint anchor: " + point.anchor());
+            // }
+
+            // used to be unlimited constraints HOWEVER PathPlanner apparently sets all the max values EXTREMELY low for safety
+            PathConstraints constraints = new PathConstraints(2,
+                                                              2.5,
+                                                              Units.degreesToRadians(270),
+                                                              Units.degreesToRadians(270),
+                                                              12,
+                                                              false);
+
+            otfPath = new PathPlannerPath(
+                waypoints,
+                constraints,
+                new IdealStartingState(0 /* change this to current velocity later */, initialPose.getRotation()),
+                new GoalEndState(0, targetPose.getRotation())
+            );
+
+            // for (PathPoint point : otfPath.getAllPathPoints()) {
+            //     System.out.println("OTF path sample" + point.position);
+            // }
+
+            ChassisSpeeds initialSpeeds = new ChassisSpeeds(0, 0, getYawRateRadians());
+
+            otfTrajectory = new PathPlannerTrajectory(
+                otfPath,
+                initialSpeeds,
+                initialPose.getRotation(),
+                new RobotConfig(ROBOT_MASS_KG, ROBOT_MOI, SwerveModule.swerveModuleConfig,
+                frontLeftLocation, frontRightLocation, backLeftLocation, backRightLocation)
+            );
+
+            // for (PathPlannerTrajectoryState point : otfTrajectory.getStates()) {
+            //     System.out.println("time: " + point.timeSeconds + " pose: " + point.pose + " field-relative speeds: " + point.fieldSpeeds);
+            // }
+
+            // System.out.println("Trajectory time: " + otfTrajectory.getTotalTimeSeconds()); 
+            // System.out.println("Trajectory states: " + otfTrajectory.getStates().size());
+
+            otfFirstTime = false;
+
+            otfTimer.stop();
+            otfTimer.reset();
+            otfTimer.start();
+        }
+        
+        PathPlannerTrajectoryState sampleState = otfTrajectory.sample(otfTimer.get());
+        Pose2d samplePose = sampleState.pose;
+        ChassisSpeeds sampleSpeeds = sampleState.fieldSpeeds;
+
+        velocityDrive(sampleSpeeds.vxMetersPerSecond     + otfForwardPID.calculate(pose.getX(),                     samplePose.getX()),
+                      sampleSpeeds.vyMetersPerSecond     + otfStrafePID.calculate( pose.getY(),                     samplePose.getY()),
+                      sampleSpeeds.omegaRadiansPerSecond + otfRotatePID.calculate( pose.getRotation().getDegrees(), samplePose.getRotation().getDegrees()), 
+                      true, false);
+
+        //DogLog.log("Drive/otfSamplePose", samplePose);
+        /*
+        ChassisSpeeds speeds = 
+            ChassisSpeeds.fromFieldRelativeSpeeds(otfForwardPID.calculate(pose.getX(),                     samplePose.getX()),
+                                                  otfStrafePID.calculate( pose.getY(),                     samplePose.getY()),
+                                                  otfRotatePID.calculate( pose.getRotation().getDegrees(), samplePose.getRotation().getDegrees()),
+                                                  pose.getRotation());
+
+        SwerveModuleState[] swerveModuleStates = swerveDriveKinematics.toSwerveModuleStates(speeds);
+
+        SwerveDriveKinematics.desaturateWheelSpeeds(swerveModuleStates, MAX_WHEEL_SPEED);
+
+        setModuleStates(swerveModuleStates, true);
+        */
+
+        return Robot.CONT;
+    }
+
+    public void otfReset() {
+        otfFirstTime = true;
     }
 
     public double getYawRadians() {
