@@ -124,14 +124,23 @@ public class Robot extends TimedRobot {
   /** This function is called periodically during operator control. */
   @Override
   public void teleopPeriodic() {
-    wheelControl();
+    //wheelControl();
     shooterControl();
 
     shooter.printWheelRPMs();
 
     if (controls.getAButton()) {
-      shooter.setTargetRPMs(1750, 1620);
+      shooter.setTargetRPMs(
+        SmartDashboard.getNumber("Shooter/FlywheelTargetRPM", 0), 
+        SmartDashboard.getNumber("Shooter/BackspinTargetRPM", 0)
+      );
+
+      // shooter.setTargetRPMs(1550, 1650);
+      //shooter.setTargetRPMs(1550, 1550);
+      //shooter.setTargetRPMs(1550, 1420);
       // shooter.setMotorRPM(1600, 1470);
+      
+
     }
     else {
       shooter.stopMotors();
