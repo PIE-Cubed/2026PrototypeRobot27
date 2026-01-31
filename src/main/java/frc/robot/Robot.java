@@ -130,7 +130,7 @@ public class Robot extends TimedRobot {
     shooter.printWheelRPMs();
 
     if (controls.getAButton()) {
-      shooter.setTargetRPMs(1750, 1620);
+      shooter.setTargetRPMs(1750, 1670);
       // shooter.setMotorRPM(1600, 1470);
     }
     else {
