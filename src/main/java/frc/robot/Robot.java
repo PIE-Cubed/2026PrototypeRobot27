@@ -136,11 +136,9 @@ public class Robot extends TimedRobot {
       );
 
       // shooter.setTargetRPMs(1550, 1650);
-      //shooter.setTargetRPMs(1550, 1550);
-      //shooter.setTargetRPMs(1550, 1420);
+      // shooter.setTargetRPMs(1550, 1550);
+      // shooter.setTargetRPMs(1550, 1420);
       // shooter.setMotorRPM(1600, 1470);
-      
-
     }
     else {
       shooter.stopMotors();
