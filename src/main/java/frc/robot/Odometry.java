@@ -1,16 +1,5 @@
 package frc.robot;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import org.ejml.simple.SimpleMatrix;
-import org.photonvision.EstimatedRobotPose;
-import org.photonvision.PhotonCamera;
-import org.photonvision.PhotonPoseEstimator;
-import org.photonvision.PhotonPoseEstimator.PoseStrategy;
-import org.photonvision.targeting.PhotonPipelineResult;
-import org.photonvision.targeting.PhotonTrackedTarget;
-
 // import dev.doglog.DogLog;
 import edu.wpi.first.apriltag.AprilTagFieldLayout;
 import edu.wpi.first.apriltag.AprilTagFields;
@@ -20,11 +9,21 @@ import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.math.util.Units;
+import java.util.ArrayList;
+import java.util.List;
+import org.ejml.simple.SimpleMatrix;
+import org.photonvision.EstimatedRobotPose;
+import org.photonvision.PhotonCamera;
+import org.photonvision.PhotonPoseEstimator;
+import org.photonvision.PhotonPoseEstimator.PoseStrategy;
+import org.photonvision.targeting.PhotonPipelineResult;
+import org.photonvision.targeting.PhotonTrackedTarget;
 
 /** Add your docs here. */
 public class Odometry {
+
     public static List<PhotonPipelineResult> cameraResults;
-    public static PhotonPipelineResult       latestResult;
+    public static PhotonPipelineResult latestResult;
 
     private final int REQUIRED_APRILTAGS = 2; // Number of required AprilTags to update the AprilTag estimator
     private final double MAX_YAW_RATE_DEGREES = 360; // Maximum angular velocity(degrees/s) to update AprilTag estimator
@@ -32,8 +31,16 @@ public class Odometry {
     // Distances from bottom center of robot to each camera
     // When rotation is 0 for all axes the Z axis is parallel to the front of the robot.
     // TODO: figure out camera offsets and get multi cam setup working
-    private final Transform3d ROBOT_TO_CAMERA1 = new Transform3d(Units.inchesToMeters(14.532183), Units.inchesToMeters(0), Units.inchesToMeters(6.081022),
-                                                 new Rotation3d( Units.degreesToRadians(0),     Units.degreesToRadians(-23),    Units.degreesToRadians(0)));
+    private final Transform3d ROBOT_TO_CAMERA1 = new Transform3d(
+        Units.inchesToMeters(14.532183),
+        Units.inchesToMeters(0),
+        Units.inchesToMeters(6.081022),
+        new Rotation3d(
+            Units.degreesToRadians(0),
+            Units.degreesToRadians(-23),
+            Units.degreesToRadians(0)
+        )
+    );
     // private final Transform3d ROBOT_TO_CAMERA2 = new Transform3d(0, 0, 0, new Rotation3d(0, 0, 0));
     // private final Transform3d ROBOT_TO_CAMERA3 = new Transform3d(0, 0, 0, new Rotation3d(0, 0, 0));
     // private final Transform3d ROBOT_TO_CAMERA4 = new Transform3d(0, 0, 0, new Rotation3d(0, 0, 0));
@@ -58,7 +65,7 @@ public class Odometry {
     // private EstimatedRobotPose camera2Pose3d;
     // private EstimatedRobotPose camera3Pose3d;
     // private EstimatedRobotPose camera4Pose3d;
-    
+
     public Drive drive;
 
     public Odometry(Drive drive) {
@@ -73,25 +80,25 @@ public class Odometry {
         // Instantiate the pose estimators for each camera
         camera1PoseEstimator = new PhotonPoseEstimator(
             AprilTagFieldLayout.loadField(AprilTagFields.k2025ReefscapeWelded), // Field selection
-            PoseStrategy.MULTI_TAG_PNP_ON_COPROCESSOR, // Strategy selection (look at docs for details)
-            ROBOT_TO_CAMERA1); // Camera offset from robot
-        
+            ROBOT_TO_CAMERA1
+        ); // Camera offset from robot
         // camera2PoseEstimator = new PhotonPoseEstimator(
         //     AprilTagFieldLayout.loadField(AprilTagFields.k2025ReefscapeWelded),
-        //     PoseStrategy.MULTI_TAG_PNP_ON_COPROCESSOR,
         //     ROBOT_TO_CAMERA2);
 
         // camera3PoseEstimator = new PhotonPoseEstimator(
         //     AprilTagFieldLayout.loadField(AprilTagFields.k2025ReefscapeWelded),
-        //     PoseStrategy.MULTI_TAG_PNP_ON_COPROCESSOR,
         //     ROBOT_TO_CAMERA3);
 
         // camera4PoseEstimator = new PhotonPoseEstimator(
         //     AprilTagFieldLayout.loadField(AprilTagFields.k2025ReefscapeWelded),
-        //     PoseStrategy.MULTI_TAG_PNP_ON_COPROCESSOR,
-        //     ROBOT_TO_CAMERA4);        
+        //     ROBOT_TO_CAMERA4);
     }
-    
+
+    public void aosidhfaoh() {
+        int integere = 2;
+    }
+
     /**
      * <p> Updates the pose estimators. Calling this outside of robotPeriodic is unnecesary.
      * <p> Do not run updateUnreadResults() beforehand as it will remove all unread results afterwards.
@@ -108,15 +115,19 @@ public class Odometry {
             latestResult = camera1Results.get(camera1Results.size() - 1);
 
             if (camera1Results.get(camera1Results.size() - 1).hasTargets()) { // Does the camera see any targets?
-                PhotonPipelineResult newResult = camera1Results.get(camera1Results.size() - 1); // Getting newest result
-                
+                PhotonPipelineResult newResult = camera1Results.get(
+                    camera1Results.size() - 1
+                ); // Getting newest result
+
                 // Checking if the camera sees enough apriltags while moving slow enough to get a good position estimate
-                if ((newResult.targets.size() >= REQUIRED_APRILTAGS) && (drive.getYawRateDegrees() <= MAX_YAW_RATE_DEGREES)) {
+                if (
+                    (newResult.targets.size() >= REQUIRED_APRILTAGS) &&
+                    (drive.getYawRateDegrees() <= MAX_YAW_RATE_DEGREES)
+                ) {
                     camera1Pose3d = camera1PoseEstimator.update(newResult).get(); // Grab estimated Pose3d from camera
                 }
             }
         }
-
         // Repeat above code for each camera
         /*
         camera2Results = camera2.getAllUnreadResults();
@@ -214,7 +225,7 @@ public class Odometry {
      * </p> Gets the current AprilTag-assisted field position.
      *      If no tags are seen or the Orange PIs haven't produced a new result, relies on encoder pose.
      * </p> Refer to the WPILib docs for specifics on field-based odometry.
-     * 
+     *
      * @return The estimated Pose. (in meters)
      */
     public EstimatedRobotPose getVisionPose() {
@@ -223,7 +234,7 @@ public class Odometry {
 
     /**
      * @return
-     * <p> Distance from the camera to the nearest/best target. 
+     * <p> Distance from the camera to the nearest/best target.
      * <p> X = forward, Y = left, Z = up. Distance is measured in meters.
      * <p> Rotation (when measured in degrees) stretches from -180 to 180, when the tag is parallel to the camera the angle is 0.
      */
@@ -236,16 +247,22 @@ public class Odometry {
             return null;
         }
 
-        Transform3d nonRotated = latestResult.getBestTarget().getBestCameraToTarget().inverse();
+        Transform3d nonRotated = latestResult
+            .getBestTarget()
+            .getBestCameraToTarget()
+            .inverse();
 
         return new Transform3d(
-            nonRotated.getTranslation(), nonRotated.getRotation().rotateBy(new Rotation3d(0, 0, Units.degreesToRadians(180)))
+            nonRotated.getTranslation(),
+            nonRotated
+                .getRotation()
+                .rotateBy(new Rotation3d(0, 0, Units.degreesToRadians(180)))
         );
     }
 
     /**
      * @return
-     * <p> Distance from the camera to the nearest/best target. 
+     * <p> Distance from the camera to the nearest/best target.
      * <p> X = forward, Y = left, Z = up. Distance is measured in inches.
      * <p> Rotation (when measured in degrees) stretches from -180 to 180, when the tag is parallel to the camera the angle is 0.
      */
@@ -256,10 +273,12 @@ public class Odometry {
             return null;
         }
 
-        return new Transform3d((Units.metersToInches(metricTransform.getX())),
-                               (Units.metersToInches(metricTransform.getY())),
-                               (Units.metersToInches(metricTransform.getZ())),
-                                metricTransform.getRotation());
+        return new Transform3d(
+            (Units.metersToInches(metricTransform.getX())),
+            (Units.metersToInches(metricTransform.getY())),
+            (Units.metersToInches(metricTransform.getZ())),
+            metricTransform.getRotation()
+        );
     }
 
     /**
@@ -314,7 +333,10 @@ public class Odometry {
 
         // photonVision doesn't give this as a function (unlike the limelight) and we need
         // to calculate it manually via trigonometry
-        double theta = Math.atan2(getAprilTagDistance().getY(), getAprilTagDistance().getX());
+        double theta = Math.atan2(
+            getAprilTagDistance().getY(),
+            getAprilTagDistance().getX()
+        );
 
         return new Rotation2d(theta);
     }
@@ -325,7 +347,7 @@ public class Odometry {
      */
     public List<PhotonTrackedTarget> getAllTags() {
         ArrayList<PhotonTrackedTarget> allTags = new ArrayList<PhotonTrackedTarget>();
-        
+
         allTags.addAll(camera1Results.get(camera1Results.size() - 1).getTargets());
         // allTags.addAll(camera2Results.get(camera2Results.size() - 1).getTargets());
         // allTags.addAll(camera4results.get(camera4Results.size() - 1).getTargets());
@@ -357,16 +379,15 @@ public class Odometry {
     public boolean hasTargets() {
         return latestResult.hasTargets();
     }
-
     /*******************************************************************************************
      *
      *                                     HELPER FUNCTIONS
-     * 
+     *
      *******************************************************************************************/
 
     /*******************************************************************************************
      *
      *                                      TEST FUNCTIONS
-     * 
+     *
      *******************************************************************************************/
 }
