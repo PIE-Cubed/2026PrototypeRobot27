@@ -1,9 +1,5 @@
 package frc.robot;
 
-import java.util.List;
-
-import org.photonvision.EstimatedRobotPose;
-
 import com.pathplanner.lib.config.RobotConfig;
 import com.pathplanner.lib.path.GoalEndState;
 import com.pathplanner.lib.path.IdealStartingState;
@@ -14,7 +10,6 @@ import com.pathplanner.lib.trajectory.PathPlannerTrajectory;
 import com.pathplanner.lib.trajectory.PathPlannerTrajectoryState;
 import com.studica.frc.AHRS;
 import com.studica.frc.AHRS.NavXComType;
-
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.VecBuilder;
@@ -32,14 +27,29 @@ import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.Timer;
+import java.util.List;
+import org.photonvision.EstimatedRobotPose;
 
 public class Drive {
+
     public static final double SWERVE_DIST_FROM_CENTER = 0.29845;
     public static final Translation2d centerLocation = new Translation2d(0, 0);
-    public static final Translation2d frontLeftLocation = new Translation2d(SWERVE_DIST_FROM_CENTER, SWERVE_DIST_FROM_CENTER);
-    public static final Translation2d frontRightLocation = new Translation2d(SWERVE_DIST_FROM_CENTER, -SWERVE_DIST_FROM_CENTER);
-    public static final Translation2d backLeftLocation = new Translation2d(-SWERVE_DIST_FROM_CENTER, SWERVE_DIST_FROM_CENTER);
-    public static final Translation2d backRightLocation = new Translation2d(-SWERVE_DIST_FROM_CENTER, -SWERVE_DIST_FROM_CENTER);
+    public static final Translation2d frontLeftLocation = new Translation2d(
+        SWERVE_DIST_FROM_CENTER,
+        SWERVE_DIST_FROM_CENTER
+    );
+    public static final Translation2d frontRightLocation = new Translation2d(
+        SWERVE_DIST_FROM_CENTER,
+        -SWERVE_DIST_FROM_CENTER
+    );
+    public static final Translation2d backLeftLocation = new Translation2d(
+        -SWERVE_DIST_FROM_CENTER,
+        SWERVE_DIST_FROM_CENTER
+    );
+    public static final Translation2d backRightLocation = new Translation2d(
+        -SWERVE_DIST_FROM_CENTER,
+        -SWERVE_DIST_FROM_CENTER
+    );
 
     public SwerveDriveKinematics swerveDriveKinematics;
 
@@ -50,11 +60,11 @@ public class Drive {
 
     // on-the-fly drive variables
     private final double ROBOT_MASS_KG = 37; // robot mass in kilograms (for pathPlanner)
-    private final double ROBOT_MOI     = 6.31; // robot moment of inertia, from the cad so approximate (for pathPlanner)
-    private PathPlannerPath       otfPath; // OTF means on-the-fly
+    private final double ROBOT_MOI = 6.31; // robot moment of inertia, from the cad so approximate (for pathPlanner)
+    private PathPlannerPath otfPath; // OTF means on-the-fly
     private PathPlannerTrajectory otfTrajectory;
-    private boolean               otfFirstTime = true;
-    private Timer                 otfTimer;
+    private boolean otfFirstTime = true;
+    private Timer otfTimer;
 
     // AprilTag PID controllers
     private PIDController otfStrafePID;
@@ -100,7 +110,7 @@ public class Drive {
 
     // Standard deviations (trust values) for encoders and April Tags
     // The lower the numbers the more trustworthy the prediction from that source is
-    private final Vector<N3> ENCODER_STD_DEV  = VecBuilder.fill(0.1, 0.1, 0.1);
+    private final Vector<N3> ENCODER_STD_DEV = VecBuilder.fill(0.1, 0.1, 0.1);
     private final Vector<N3> APRILTAG_STD_DEV = VecBuilder.fill(0.3, 0.3, 0.5);
 
     private static SwerveDrivePoseEstimator aprilTagsEstimator;
@@ -115,8 +125,7 @@ public class Drive {
     public Drive() {
         try {
             ahrs = new AHRS(NavXComType.kMXP_SPI);
-        }
-        catch (RuntimeException ex) {
+        } catch (RuntimeException ex) {
             System.out.println("Failed to instanciate navX");
         }
 
@@ -139,10 +148,10 @@ public class Drive {
             backRightLocation
         );
 
-        frontLeft  = new SwerveModule(14, 15, true);
+        frontLeft = new SwerveModule(14, 15, true);
         frontRight = new SwerveModule(16, 17, false);
-        backLeft   = new SwerveModule(12, 13, true);
-        backRight  = new SwerveModule(10, 11, false);
+        backLeft = new SwerveModule(12, 13, true);
+        backRight = new SwerveModule(10, 11, false);
 
         rotatePID = new PIDController(ROTATE_P, ROTATE_I, ROTATE_D);
 
@@ -155,9 +164,9 @@ public class Drive {
         // Forward PID for OTF drive
         otfForwardPID = new PIDController(OTF_F_P, OTF_F_I, OTF_F_D);
         otfForwardPID.setTolerance(OTF_SF_TOLERANCE);
-        otfForwardPID.setIntegratorRange(-OTF_F_I_RANGE, OTF_F_I_RANGE); 
+        otfForwardPID.setIntegratorRange(-OTF_F_I_RANGE, OTF_F_I_RANGE);
         otfForwardPID.setIZone(OTF_F_I_ZONE);
-        
+
         // Rotate PID for OTF drive
         otfRotatePID = new PIDController(OTF_R_P, OTF_R_I, OTF_R_D);
         otfRotatePID.setTolerance(OTF_R_TOLERANCE);
@@ -175,25 +184,30 @@ public class Drive {
         Rotation2d initialRotation = new Rotation2d(getYawRadians());
 
         // encoderEstimator = new SwerveDriveOdometry(
-        //     swerveDriveKinematics, 
-        //     initialRotation, 
-        //     initialPosition, 
+        //     swerveDriveKinematics,
+        //     initialRotation,
+        //     initialPosition,
         //     new Pose2d(0, 0, new Rotation2d(0))
         // );
 
         aprilTagsEstimator = new SwerveDrivePoseEstimator(
-            swerveDriveKinematics, 
-            initialRotation, 
-            initialPosition, 
-            new Pose2d(0, 0, new Rotation2d(0)), 
-            ENCODER_STD_DEV, 
+            swerveDriveKinematics,
+            initialRotation,
+            initialPosition,
+            new Pose2d(0, 0, new Rotation2d(0)),
+            ENCODER_STD_DEV,
             APRILTAG_STD_DEV
         );
 
         timer.restart();
     }
 
-    public void teleopDrive(double forwardPowerFwdPos, double strafePowerLeftPos, double rotatePowerCcwPos, boolean fieldDrive) {
+    public void teleopDrive(
+        double forwardPowerFwdPos,
+        double strafePowerLeftPos,
+        double rotatePowerCcwPos,
+        boolean fieldDrive
+    ) {
         /*
          * FieldRelativeSpeeds:
          *  Positive for away from alliance wall
@@ -207,9 +221,18 @@ public class Drive {
          */
         SwerveModuleState[] swerveModuleStates =
             swerveDriveKinematics.toSwerveModuleStates(
-                fieldDrive 
-                ? ChassisSpeeds.fromFieldRelativeSpeeds(forwardPowerFwdPos, strafePowerLeftPos, rotatePowerCcwPos, new Rotation2d( getYawRadians() )) 
-                : new ChassisSpeeds(forwardPowerFwdPos, strafePowerLeftPos, rotatePowerCcwPos)
+                fieldDrive
+                    ? ChassisSpeeds.fromFieldRelativeSpeeds(
+                        forwardPowerFwdPos,
+                        strafePowerLeftPos,
+                        rotatePowerCcwPos,
+                        new Rotation2d(getYawRadians())
+                    )
+                    : new ChassisSpeeds(
+                        forwardPowerFwdPos,
+                        strafePowerLeftPos,
+                        rotatePowerCcwPos
+                    )
             );
 
         SwerveDriveKinematics.desaturateWheelSpeeds(swerveModuleStates, MAX_WHEEL_POWER);
@@ -226,7 +249,13 @@ public class Drive {
      * @param fieldDrive Whether to drive with field relative speeds
      * @param centerOfRotation The offset for the center of rotation (in meters)
      */
-    public void teleopDrive(double forwardPower, double strafePower, double rotatePower, boolean fieldDrive, Translation2d centerOfRotation) {
+    public void teleopDrive(
+        double forwardPower,
+        double strafePower,
+        double rotatePower,
+        boolean fieldDrive,
+        Translation2d centerOfRotation
+    ) {
         /*
          * FieldRelativeSpeeds:
          *  Positive for away from alliance wall
@@ -243,11 +272,16 @@ public class Drive {
 
         SwerveModuleState[] swerveModuleStates =
             swerveDriveKinematics.toSwerveModuleStates(
-                fieldDrive 
-                ? ChassisSpeeds.fromFieldRelativeSpeeds(forwardPower, strafePower, rotatePower, new Rotation2d( getYawRadians() )) 
-                : new ChassisSpeeds(forwardPower, strafePower, rotatePower),
+                fieldDrive
+                    ? ChassisSpeeds.fromFieldRelativeSpeeds(
+                        forwardPower,
+                        strafePower,
+                        rotatePower,
+                        new Rotation2d(getYawRadians())
+                    )
+                    : new ChassisSpeeds(forwardPower, strafePower, rotatePower),
                 centerOfRotation
-        );
+            );
 
         SwerveDriveKinematics.desaturateWheelSpeeds(swerveModuleStates, MAX_WHEEL_POWER);
 
@@ -264,7 +298,13 @@ public class Drive {
      * @param fieldDrive Whether to drive with field relative speeds
      * @param isRedAlliance Whether the robot is on the red alliance or not. Set to false if using for autonomous. (if true, changes robot rotation by 180 degrees so it is facing the other way)
      */
-    public void velocityDrive(double forwardMPS, double strafeMPS, double rotateDPS, boolean fieldDrive, boolean isRedAlliance) {
+    public void velocityDrive(
+        double forwardMPS,
+        double strafeMPS,
+        double rotateDPS,
+        boolean fieldDrive,
+        boolean isRedAlliance
+    ) {
         /*
          * FieldRelativeSpeeds:
          *  Positive for away from your alliance wall
@@ -286,16 +326,15 @@ public class Drive {
 
         if (isRedAlliance) {
             fieldRotation = getPose().getRotation().rotateBy(new Rotation2d(180));
-        }
-        else {
+        } else {
             fieldRotation = getPose().getRotation();
         }
 
         SwerveModuleState[] swerveModuleStates =
             swerveDriveKinematics.toSwerveModuleStates(
-                fieldDrive 
-                ? ChassisSpeeds.fromFieldRelativeSpeeds(robotSpeeds, fieldRotation)
-                : robotSpeeds
+                fieldDrive
+                    ? ChassisSpeeds.fromFieldRelativeSpeeds(robotSpeeds, fieldRotation)
+                    : robotSpeeds
             );
 
         SwerveDriveKinematics.desaturateWheelSpeeds(swerveModuleStates, MAX_WHEEL_POWER);
@@ -316,9 +355,12 @@ public class Drive {
     public int otfDriveTo(Pose2d targetPose) {
         Pose2d pose = getPose();
 
-        if (otfForwardPID.atSetpoint() && otfStrafePID.atSetpoint() && otfRotatePID.atSetpoint() &&
-            otfTimer.get() >= otfTrajectory.getTotalTimeSeconds()) {
-            
+        if (
+            otfForwardPID.atSetpoint() &&
+            otfStrafePID.atSetpoint() &&
+            otfRotatePID.atSetpoint() &&
+            otfTimer.get() >= otfTrajectory.getTotalTimeSeconds()
+        ) {
             System.out.println("OTF drive finished");
 
             otfFirstTime = true;
@@ -348,17 +390,22 @@ public class Drive {
             // }
 
             // used to be unlimited constraints HOWEVER PathPlanner apparently sets all the max values EXTREMELY low for safety
-            PathConstraints constraints = new PathConstraints(2,
-                                                              2.5,
-                                                              Units.degreesToRadians(270),
-                                                              Units.degreesToRadians(270),
-                                                              12,
-                                                              false);
+            PathConstraints constraints = new PathConstraints(
+                2,
+                2.5,
+                Units.degreesToRadians(270),
+                Units.degreesToRadians(270),
+                12,
+                false
+            );
 
             otfPath = new PathPlannerPath(
                 waypoints,
                 constraints,
-                new IdealStartingState(0 /* change this to current velocity later */, initialPose.getRotation()),
+                new IdealStartingState(
+                    0/* change this to current velocity later */,
+                    initialPose.getRotation()
+                ),
                 new GoalEndState(0, targetPose.getRotation())
             );
 
@@ -372,15 +419,22 @@ public class Drive {
                 otfPath,
                 initialSpeeds,
                 initialPose.getRotation(),
-                new RobotConfig(ROBOT_MASS_KG, ROBOT_MOI, SwerveModule.swerveModuleConfig,
-                frontLeftLocation, frontRightLocation, backLeftLocation, backRightLocation)
+                new RobotConfig(
+                    ROBOT_MASS_KG,
+                    ROBOT_MOI,
+                    SwerveModule.swerveModuleConfig,
+                    frontLeftLocation,
+                    frontRightLocation,
+                    backLeftLocation,
+                    backRightLocation
+                )
             );
 
             // for (PathPlannerTrajectoryState point : otfTrajectory.getStates()) {
             //     System.out.println("time: " + point.timeSeconds + " pose: " + point.pose + " field-relative speeds: " + point.fieldSpeeds);
             // }
 
-            // System.out.println("Trajectory time: " + otfTrajectory.getTotalTimeSeconds()); 
+            // System.out.println("Trajectory time: " + otfTrajectory.getTotalTimeSeconds());
             // System.out.println("Trajectory states: " + otfTrajectory.getStates().size());
 
             otfFirstTime = false;
@@ -389,15 +443,24 @@ public class Drive {
             otfTimer.reset();
             otfTimer.start();
         }
-        
+
         PathPlannerTrajectoryState sampleState = otfTrajectory.sample(otfTimer.get());
         Pose2d samplePose = sampleState.pose;
         ChassisSpeeds sampleSpeeds = sampleState.fieldSpeeds;
 
-        velocityDrive(sampleSpeeds.vxMetersPerSecond     + otfForwardPID.calculate(pose.getX(),                     samplePose.getX()),
-                      sampleSpeeds.vyMetersPerSecond     + otfStrafePID.calculate( pose.getY(),                     samplePose.getY()),
-                      sampleSpeeds.omegaRadiansPerSecond + otfRotatePID.calculate( pose.getRotation().getDegrees(), samplePose.getRotation().getDegrees()), 
-                      true, false);
+        velocityDrive(
+            sampleSpeeds.vxMetersPerSecond +
+            otfForwardPID.calculate(pose.getX(), samplePose.getX()),
+            sampleSpeeds.vyMetersPerSecond +
+            otfStrafePID.calculate(pose.getY(), samplePose.getY()),
+            sampleSpeeds.omegaRadiansPerSecond +
+            otfRotatePID.calculate(
+                pose.getRotation().getDegrees(),
+                samplePose.getRotation().getDegrees()
+            ),
+            true,
+            false
+        );
 
         //DogLog.log("Drive/otfSamplePose", samplePose);
         /*
@@ -431,29 +494,41 @@ public class Drive {
 
         frontRight.setDriveMotorPower(0.0);
         frontRight.setRotateMotorPower(0.0);
-        
+
         backLeft.setDriveMotorPower(0.0);
         backLeft.setRotateMotorPower(0.0);
-        
+
         backRight.setDriveMotorPower(0.0);
         backRight.setRotateMotorPower(0.0);
     }
 
     /**
-    * Zero the gyro
-    */
+     * Zero the gyro
+     */
     public void resetGyro() {
         ahrs.zeroYaw();
     }
 
     /**
-    * Crosses the wheels and makes the robot impossible to move.
-    */
+     * Crosses the wheels and makes the robot impossible to move.
+     */
     public void lockWheels() {
-        frontLeft.setDesiredState(new SwerveModuleState(0, new Rotation2d( Math.PI / 4 )), false);
-        frontRight.setDesiredState(new SwerveModuleState(0, new Rotation2d( -Math.PI / 4 )), false);
-        backLeft.setDesiredState(new SwerveModuleState(0, new Rotation2d( -Math.PI / 4 )), false);
-        backRight.setDesiredState(new SwerveModuleState(0, new Rotation2d( Math.PI / 4 )), false);       
+        frontLeft.setDesiredState(
+            new SwerveModuleState(0, new Rotation2d(Math.PI / 4)),
+            false
+        );
+        frontRight.setDesiredState(
+            new SwerveModuleState(0, new Rotation2d(-Math.PI / 4)),
+            false
+        );
+        backLeft.setDesiredState(
+            new SwerveModuleState(0, new Rotation2d(-Math.PI / 4)),
+            false
+        );
+        backRight.setDesiredState(
+            new SwerveModuleState(0, new Rotation2d(Math.PI / 4)),
+            false
+        );
     }
 
     /**
@@ -486,40 +561,37 @@ public class Drive {
      * @return A SwerveModulePosition[] containing each module's current position.
      */
     public SwerveModulePosition[] getModulePositions() {
-        return new SwerveModulePosition[] { 
+        return new SwerveModulePosition[] {
             frontLeft.getModulePosition(),
             frontRight.getModulePosition(),
             backLeft.getModulePosition(),
-            backRight.getModulePosition()
+            backRight.getModulePosition(),
         };
     }
 
-    public Translation2d getCenterOfRotation(double rotatePowerCcwPos, double rightStickY) {
+    public Translation2d getCenterOfRotation(
+        double rotatePowerCcwPos,
+        double rightStickY
+    ) {
         Translation2d centerOfRotation = centerLocation;
 
         if (rightStickY >= 0.2) {
             if (rotatePowerCcwPos < 0) {
                 centerOfRotation = frontRightLocation;
-            }
-            else if (rotatePowerCcwPos > 0) {
+            } else if (rotatePowerCcwPos > 0) {
                 centerOfRotation = Drive.frontLeftLocation;
-            }
-            else {
+            } else {
                 centerOfRotation = Drive.centerLocation;
             }
-        }
-        else if (rightStickY <= -0.2) {
+        } else if (rightStickY <= -0.2) {
             if (rotatePowerCcwPos < 0) {
                 centerOfRotation = Drive.backRightLocation;
-            }
-            else if (rotatePowerCcwPos > 0) {
+            } else if (rotatePowerCcwPos > 0) {
                 centerOfRotation = Drive.backLeftLocation;
-            }
-            else {
+            } else {
                 centerOfRotation = Drive.centerLocation;
             }
-        }
-        else {
+        } else {
             centerOfRotation = Drive.centerLocation;
         }
 
@@ -529,10 +601,10 @@ public class Drive {
     public void updatePoseEstimator() {
         SwerveModulePosition[] currentPosition = getModulePositions();
         Rotation2d currentRotation = new Rotation2d(getYawRadians());
-        
+
         // Update vision estimator with encoder data
         aprilTagsEstimator.updateWithTime(timer.get(), currentRotation, currentPosition);
-        
+
         lastPose = currPose;
         currPose = getPose();
     }
@@ -542,43 +614,42 @@ public class Drive {
      * Does not need to be called every loop as long as updatePoseEstimator is called.
      * @param visionEst The estimated pose from the cameras.
      */
-    public void addVisionMeasurement(EstimatedRobotPose visionEst, Matrix<N3, N3> stdDevs) {
+    public void addVisionMeasurement(
+        EstimatedRobotPose visionEst,
+        Matrix<N3, N3> stdDevs
+    ) {
         aprilTagsEstimator.addVisionMeasurement(
             visionEst.estimatedPose.toPose2d(),
             visionEst.timestampSeconds,
             stdDevs.extractColumnVector(0) // Standard deviations of the camera
         );
     }
-    
+
     /**
      * </p> Resets the estimator to a given pose.
      * </p> Gyro angle and swerve module positions don't have to be reset beforehand
      *      as the estimators automatically creates offsets.
-     * 
+     *
      * @param newPose The Pose2d to reset to.
      */
     public void reset(Pose2d newPose) {
         SwerveModulePosition[] currentPosition = getModulePositions();
         Rotation2d gyro = new Rotation2d(getYawRadians());
 
-        aprilTagsEstimator.resetPosition(
-            gyro, 
-            currentPosition, 
-            newPose
-        );
+        aprilTagsEstimator.resetPosition(gyro, currentPosition, newPose);
     }
 
     /**
      * </p> Gets the current AprilTag-assisted field position.
      *      If there is no vision estimate it relies on encoder pose.
      * </p> Refer to the WPILib docs for specifics on field-based odometry.
-     * 
+     *
      * @return The estimated Pose. (in meters)
      */
     public static Pose2d getPose() {
         return aprilTagsEstimator.getEstimatedPosition();
     }
-    
+
     /**
      * Returns the current velocity of the robot.
      */
