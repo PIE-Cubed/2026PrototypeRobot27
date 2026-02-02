@@ -84,10 +84,7 @@ public class Robot extends TimedRobot {
 
         SmartDashboard.putNumber("Match Time", time);
         SmartDashboard.putNumber("Time Until Shift", AllianceUtil.timeUntilShift(time));
-        SmartDashboard.putBoolean(
-            "Hub Active",
-            AllianceUtil.isOurShift(AllianceUtil.getShift(time))
-        );
+        SmartDashboard.putBoolean("Hub Active", AllianceUtil.isOurShift(AllianceUtil.getShift(time)));
     }
 
     /**
@@ -192,10 +189,7 @@ public class Robot extends TimedRobot {
         double rotatePowerCcwPos = controls.getRotatePowerCcwPositive();
         double rightStickY = controls.getRightY();
 
-        Translation2d centerOfRotation = drive.getCenterOfRotation(
-            rotatePowerCcwPos,
-            rightStickY
-        );
+        Translation2d centerOfRotation = drive.getCenterOfRotation(rotatePowerCcwPos, rightStickY);
 
         if (rightStickY > 0.2) {
             rotatePowerCcwPos = rotatePowerCcwPos * -1; // we need to reverse the rotation power for rotating off of front wheels
@@ -204,13 +198,7 @@ public class Robot extends TimedRobot {
         if (lockWheels) {
             drive.lockWheels();
         } else {
-            drive.teleopDrive(
-                forwardPowerFwdPos,
-                strafePowerLeftPos,
-                rotatePowerCcwPos,
-                fieldDrive,
-                centerOfRotation
-            );
+            drive.teleopDrive(forwardPowerFwdPos, strafePowerLeftPos, rotatePowerCcwPos, fieldDrive, centerOfRotation);
         }
 
         if (resetGyro) {
