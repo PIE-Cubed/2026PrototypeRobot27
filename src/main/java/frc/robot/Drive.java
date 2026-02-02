@@ -1,5 +1,6 @@
 package frc.robot;
 
+import choreo.trajectory.SwerveSample;
 import com.pathplanner.lib.config.RobotConfig;
 import com.pathplanner.lib.path.GoalEndState;
 import com.pathplanner.lib.path.IdealStartingState;
@@ -482,6 +483,23 @@ public class Drive {
 
     public void otfReset() {
         otfFirstTime = true;
+    }
+
+    /**
+     * Follows a choreo SwerveSample.
+     * @param sample The sample to follow
+     */
+    public void followSample(SwerveSample sample) {
+        Pose2d pose = getPose();
+
+        velocityDrive(
+            sample.vx + otfForwardPID.calculate(pose.getX(), sample.x),
+            sample.vy + otfStrafePID.calculate(pose.getY(), sample.y),
+            sample.omega +
+            choreoRotatePID.calculate(pose.getRotation().getRadians(), sample.heading),
+            true,
+            false
+        );
     }
 
     public double getYawRadians() {
