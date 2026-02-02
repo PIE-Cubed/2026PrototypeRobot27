@@ -54,22 +54,15 @@ public class Shooter {
         flywheelMotorConfig = new SparkFlexConfig();
 
         backspinMotorConfig.idleMode(IdleMode.kCoast);
+        backspinMotorConfig.smartCurrentLimit(Robot.VORTEX_CURRENT_LIMIT);
         backspinMotorConfig.inverted(true);
 
         flywheelMotorConfig.idleMode(IdleMode.kCoast);
+        flywheelMotorConfig.smartCurrentLimit(Robot.VORTEX_CURRENT_LIMIT);
         flywheelMotorConfig.inverted(false);
 
-        backspinMotor.configure(
-            backspinMotorConfig,
-            ResetMode.kNoResetSafeParameters,
-            PersistMode.kPersistParameters
-        );
-
-        flywheelMotor.configure(
-            flywheelMotorConfig,
-            ResetMode.kNoResetSafeParameters,
-            PersistMode.kPersistParameters
-        );
+        backspinMotor.configure(backspinMotorConfig, ResetMode.kNoResetSafeParameters, PersistMode.kPersistParameters);
+        flywheelMotor.configure(flywheelMotorConfig, ResetMode.kNoResetSafeParameters, PersistMode.kPersistParameters);
 
         backspinMotorEncoder = backspinMotor.getEncoder();
         flywheelMotorEncoder = flywheelMotor.getEncoder();
@@ -82,8 +75,8 @@ public class Shooter {
     }
 
     public void setMotorRPM(double flywheelRPM, double backspinRPM) {
-        setTopMotorVoltage(flywheelRPM / VELOCITY_TO_VOLT_RATIO);
-        setBottomMotorVoltage(backspinRPM / VELOCITY_TO_VOLT_RATIO);
+        setBackspinMotorVoltage(flywheelRPM / VELOCITY_TO_VOLT_RATIO);
+        setFlywheelMotorVoltage(backspinRPM / VELOCITY_TO_VOLT_RATIO);
     }
 
     /**
@@ -91,16 +84,16 @@ public class Shooter {
      * @param flywheelVoltage
      * @param backspinVoltage
      */
-    public void setMotorVoltages(double flywheelVoltage, double backspinVoltage) {
-        setBottomMotorVoltage(flywheelVoltage);
-        setTopMotorVoltage(backspinVoltage);
+    public void setWheelVoltages(double flywheelVoltage, double backspinVoltage) {
+        setFlywheelMotorVoltage(flywheelVoltage);
+        setBackspinMotorVoltage(backspinVoltage);
     }
 
     /**
      * voltage should be -12 to 12
      * @param voltage
      */
-    public void setTopMotorVoltage(double voltage) {
+    public void setBackspinMotorVoltage(double voltage) {
         backspinMotor.setVoltage(voltage);
     }
 
@@ -108,7 +101,7 @@ public class Shooter {
      * voltage should be -12 to 12
      * @param voltage
      */
-    public void setBottomMotorVoltage(double voltage) {
+    public void setFlywheelMotorVoltage(double voltage) {
         flywheelMotor.setVoltage(voltage);
     }
 
@@ -127,14 +120,10 @@ public class Shooter {
         double currentBackspinRPM = backspinMotorEncoder.getVelocity();
 
         double flywheelVoltage = prevFlywheelVoltage;
-        flywheelVoltage =
-            flywheelVoltage +
-            flywheelPIDController.calculate(currentFlywheelRPM, targetFlywheelRPM);
+        flywheelVoltage = flywheelVoltage + flywheelPIDController.calculate(currentFlywheelRPM, targetFlywheelRPM);
 
         double backspinVoltage = prevBackspinVoltage;
-        backspinVoltage =
-            backspinVoltage +
-            backspinPIDController.calculate(currentBackspinRPM, targetBackspinRPM);
+        backspinVoltage = backspinVoltage + backspinPIDController.calculate(currentBackspinRPM, targetBackspinRPM);
 
         flywheelVoltage = MathUtil.clamp(flywheelVoltage, -12, 12);
         backspinVoltage = MathUtil.clamp(backspinVoltage, -12, 12);
@@ -154,7 +143,7 @@ public class Shooter {
         SmartDashboard.putNumber("Shooter/CurrentBackspinRPM", currentBackspinRPM);
     }
 
-    public void stopMotors() {
+    public void stopWheels() {
         flywheelMotor.stopMotor();
         backspinMotor.stopMotor();
 
