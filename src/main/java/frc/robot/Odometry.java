@@ -15,7 +15,6 @@ import org.ejml.simple.SimpleMatrix;
 import org.photonvision.EstimatedRobotPose;
 import org.photonvision.PhotonCamera;
 import org.photonvision.PhotonPoseEstimator;
-import org.photonvision.PhotonPoseEstimator.PoseStrategy;
 import org.photonvision.targeting.PhotonPipelineResult;
 import org.photonvision.targeting.PhotonTrackedTarget;
 
@@ -35,11 +34,7 @@ public class Odometry {
         Units.inchesToMeters(14.532183),
         Units.inchesToMeters(0),
         Units.inchesToMeters(6.081022),
-        new Rotation3d(
-            Units.degreesToRadians(0),
-            Units.degreesToRadians(-23),
-            Units.degreesToRadians(0)
-        )
+        new Rotation3d(Units.degreesToRadians(0), Units.degreesToRadians(-23), Units.degreesToRadians(0))
     );
     // private final Transform3d ROBOT_TO_CAMERA2 = new Transform3d(0, 0, 0, new Rotation3d(0, 0, 0));
     // private final Transform3d ROBOT_TO_CAMERA3 = new Transform3d(0, 0, 0, new Rotation3d(0, 0, 0));
@@ -95,10 +90,6 @@ public class Odometry {
         //     ROBOT_TO_CAMERA4);
     }
 
-    public void aosidhfaoh() {
-        int integere = 2;
-    }
-
     /**
      * <p> Updates the pose estimators. Calling this outside of robotPeriodic is unnecesary.
      * <p> Do not run updateUnreadResults() beforehand as it will remove all unread results afterwards.
@@ -115,15 +106,10 @@ public class Odometry {
             latestResult = camera1Results.get(camera1Results.size() - 1);
 
             if (camera1Results.get(camera1Results.size() - 1).hasTargets()) { // Does the camera see any targets?
-                PhotonPipelineResult newResult = camera1Results.get(
-                    camera1Results.size() - 1
-                ); // Getting newest result
+                PhotonPipelineResult newResult = camera1Results.get(camera1Results.size() - 1); // Getting newest result
 
                 // Checking if the camera sees enough apriltags while moving slow enough to get a good position estimate
-                if (
-                    (newResult.targets.size() >= REQUIRED_APRILTAGS) &&
-                    (drive.getYawRateDegrees() <= MAX_YAW_RATE_DEGREES)
-                ) {
+                if ((newResult.targets.size() >= REQUIRED_APRILTAGS) && (drive.getYawRateDegrees() <= MAX_YAW_RATE_DEGREES)) {
                     camera1Pose3d = camera1PoseEstimator.update(newResult).get(); // Grab estimated Pose3d from camera
                 }
             }
@@ -247,16 +233,11 @@ public class Odometry {
             return null;
         }
 
-        Transform3d nonRotated = latestResult
-            .getBestTarget()
-            .getBestCameraToTarget()
-            .inverse();
+        Transform3d nonRotated = latestResult.getBestTarget().getBestCameraToTarget().inverse();
 
         return new Transform3d(
             nonRotated.getTranslation(),
-            nonRotated
-                .getRotation()
-                .rotateBy(new Rotation3d(0, 0, Units.degreesToRadians(180)))
+            nonRotated.getRotation().rotateBy(new Rotation3d(0, 0, Units.degreesToRadians(180)))
         );
     }
 
@@ -333,10 +314,7 @@ public class Odometry {
 
         // photonVision doesn't give this as a function (unlike the limelight) and we need
         // to calculate it manually via trigonometry
-        double theta = Math.atan2(
-            getAprilTagDistance().getY(),
-            getAprilTagDistance().getX()
-        );
+        double theta = Math.atan2(getAprilTagDistance().getY(), getAprilTagDistance().getX());
 
         return new Rotation2d(theta);
     }

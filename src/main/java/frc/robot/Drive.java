@@ -35,22 +35,10 @@ public class Drive {
 
     public static final double SWERVE_DIST_FROM_CENTER = 0.29845;
     public static final Translation2d centerLocation = new Translation2d(0, 0);
-    public static final Translation2d frontLeftLocation = new Translation2d(
-        SWERVE_DIST_FROM_CENTER,
-        SWERVE_DIST_FROM_CENTER
-    );
-    public static final Translation2d frontRightLocation = new Translation2d(
-        SWERVE_DIST_FROM_CENTER,
-        -SWERVE_DIST_FROM_CENTER
-    );
-    public static final Translation2d backLeftLocation = new Translation2d(
-        -SWERVE_DIST_FROM_CENTER,
-        SWERVE_DIST_FROM_CENTER
-    );
-    public static final Translation2d backRightLocation = new Translation2d(
-        -SWERVE_DIST_FROM_CENTER,
-        -SWERVE_DIST_FROM_CENTER
-    );
+    public static final Translation2d frontLeftLocation = new Translation2d(SWERVE_DIST_FROM_CENTER, SWERVE_DIST_FROM_CENTER);
+    public static final Translation2d frontRightLocation = new Translation2d(SWERVE_DIST_FROM_CENTER, -SWERVE_DIST_FROM_CENTER);
+    public static final Translation2d backLeftLocation = new Translation2d(-SWERVE_DIST_FROM_CENTER, SWERVE_DIST_FROM_CENTER);
+    public static final Translation2d backRightLocation = new Translation2d(-SWERVE_DIST_FROM_CENTER, -SWERVE_DIST_FROM_CENTER);
 
     public SwerveDriveKinematics swerveDriveKinematics;
 
@@ -142,12 +130,7 @@ public class Drive {
 
         ahrs.zeroYaw();
 
-        swerveDriveKinematics = new SwerveDriveKinematics(
-            frontLeftLocation,
-            frontRightLocation,
-            backLeftLocation,
-            backRightLocation
-        );
+        swerveDriveKinematics = new SwerveDriveKinematics(frontLeftLocation, frontRightLocation, backLeftLocation, backRightLocation);
 
         frontLeft = new SwerveModule(14, 15, true);
         frontRight = new SwerveModule(16, 17, false);
@@ -203,12 +186,7 @@ public class Drive {
         timer.restart();
     }
 
-    public void teleopDrive(
-        double forwardPowerFwdPos,
-        double strafePowerLeftPos,
-        double rotatePowerCcwPos,
-        boolean fieldDrive
-    ) {
+    public void teleopDrive(double forwardPowerFwdPos, double strafePowerLeftPos, double rotatePowerCcwPos, boolean fieldDrive) {
         /*
          * FieldRelativeSpeeds:
          *  Positive for away from alliance wall
@@ -220,21 +198,16 @@ public class Drive {
          *  Positive for left (strafePower)
          *  Positive for counter clockwise (rotatePower)
          */
-        SwerveModuleState[] swerveModuleStates =
-            swerveDriveKinematics.toSwerveModuleStates(
-                fieldDrive
-                    ? ChassisSpeeds.fromFieldRelativeSpeeds(
-                        forwardPowerFwdPos,
-                        strafePowerLeftPos,
-                        rotatePowerCcwPos,
-                        new Rotation2d(getYawRadians())
-                    )
-                    : new ChassisSpeeds(
-                        forwardPowerFwdPos,
-                        strafePowerLeftPos,
-                        rotatePowerCcwPos
-                    )
-            );
+        SwerveModuleState[] swerveModuleStates = swerveDriveKinematics.toSwerveModuleStates(
+            fieldDrive
+                ? ChassisSpeeds.fromFieldRelativeSpeeds(
+                    forwardPowerFwdPos,
+                    strafePowerLeftPos,
+                    rotatePowerCcwPos,
+                    new Rotation2d(getYawRadians())
+                )
+                : new ChassisSpeeds(forwardPowerFwdPos, strafePowerLeftPos, rotatePowerCcwPos)
+        );
 
         SwerveDriveKinematics.desaturateWheelSpeeds(swerveModuleStates, MAX_WHEEL_POWER);
 
@@ -271,18 +244,12 @@ public class Drive {
 
         // System.out.println("fwd" + forwardPower + " ---- strf" + strafePower*-1 + " ---- rot:" + rotatePower);
 
-        SwerveModuleState[] swerveModuleStates =
-            swerveDriveKinematics.toSwerveModuleStates(
-                fieldDrive
-                    ? ChassisSpeeds.fromFieldRelativeSpeeds(
-                        forwardPower,
-                        strafePower,
-                        rotatePower,
-                        new Rotation2d(getYawRadians())
-                    )
-                    : new ChassisSpeeds(forwardPower, strafePower, rotatePower),
-                centerOfRotation
-            );
+        SwerveModuleState[] swerveModuleStates = swerveDriveKinematics.toSwerveModuleStates(
+            fieldDrive
+                ? ChassisSpeeds.fromFieldRelativeSpeeds(forwardPower, strafePower, rotatePower, new Rotation2d(getYawRadians()))
+                : new ChassisSpeeds(forwardPower, strafePower, rotatePower),
+            centerOfRotation
+        );
 
         SwerveDriveKinematics.desaturateWheelSpeeds(swerveModuleStates, MAX_WHEEL_POWER);
 
@@ -299,13 +266,7 @@ public class Drive {
      * @param fieldDrive Whether to drive with field relative speeds
      * @param isRedAlliance Whether the robot is on the red alliance or not. Set to false if using for autonomous. (if true, changes robot rotation by 180 degrees so it is facing the other way)
      */
-    public void velocityDrive(
-        double forwardMPS,
-        double strafeMPS,
-        double rotateDPS,
-        boolean fieldDrive,
-        boolean isRedAlliance
-    ) {
+    public void velocityDrive(double forwardMPS, double strafeMPS, double rotateDPS, boolean fieldDrive, boolean isRedAlliance) {
         /*
          * FieldRelativeSpeeds:
          *  Positive for away from your alliance wall
@@ -331,12 +292,9 @@ public class Drive {
             fieldRotation = getPose().getRotation();
         }
 
-        SwerveModuleState[] swerveModuleStates =
-            swerveDriveKinematics.toSwerveModuleStates(
-                fieldDrive
-                    ? ChassisSpeeds.fromFieldRelativeSpeeds(robotSpeeds, fieldRotation)
-                    : robotSpeeds
-            );
+        SwerveModuleState[] swerveModuleStates = swerveDriveKinematics.toSwerveModuleStates(
+            fieldDrive ? ChassisSpeeds.fromFieldRelativeSpeeds(robotSpeeds, fieldRotation) : robotSpeeds
+        );
 
         SwerveDriveKinematics.desaturateWheelSpeeds(swerveModuleStates, MAX_WHEEL_POWER);
 
@@ -391,22 +349,12 @@ public class Drive {
             // }
 
             // used to be unlimited constraints HOWEVER PathPlanner apparently sets all the max values EXTREMELY low for safety
-            PathConstraints constraints = new PathConstraints(
-                2,
-                2.5,
-                Units.degreesToRadians(270),
-                Units.degreesToRadians(270),
-                12,
-                false
-            );
+            PathConstraints constraints = new PathConstraints(2, 2.5, Units.degreesToRadians(270), Units.degreesToRadians(270), 12, false);
 
             otfPath = new PathPlannerPath(
                 waypoints,
                 constraints,
-                new IdealStartingState(
-                    0/* change this to current velocity later */,
-                    initialPose.getRotation()
-                ),
+                new IdealStartingState(0/* change this to current velocity later */, initialPose.getRotation()),
                 new GoalEndState(0, targetPose.getRotation())
             );
 
@@ -450,15 +398,10 @@ public class Drive {
         ChassisSpeeds sampleSpeeds = sampleState.fieldSpeeds;
 
         velocityDrive(
-            sampleSpeeds.vxMetersPerSecond +
-            otfForwardPID.calculate(pose.getX(), samplePose.getX()),
-            sampleSpeeds.vyMetersPerSecond +
-            otfStrafePID.calculate(pose.getY(), samplePose.getY()),
+            sampleSpeeds.vxMetersPerSecond + otfForwardPID.calculate(pose.getX(), samplePose.getX()),
+            sampleSpeeds.vyMetersPerSecond + otfStrafePID.calculate(pose.getY(), samplePose.getY()),
             sampleSpeeds.omegaRadiansPerSecond +
-            otfRotatePID.calculate(
-                pose.getRotation().getDegrees(),
-                samplePose.getRotation().getDegrees()
-            ),
+            otfRotatePID.calculate(pose.getRotation().getDegrees(), samplePose.getRotation().getDegrees()),
             true,
             false
         );
@@ -495,8 +438,7 @@ public class Drive {
         velocityDrive(
             sample.vx + otfForwardPID.calculate(pose.getX(), sample.x),
             sample.vy + otfStrafePID.calculate(pose.getY(), sample.y),
-            sample.omega +
-            choreoRotatePID.calculate(pose.getRotation().getRadians(), sample.heading),
+            sample.omega + choreoRotatePID.calculate(pose.getRotation().getRadians(), sample.heading),
             true,
             false
         );
@@ -531,22 +473,10 @@ public class Drive {
      * Crosses the wheels and makes the robot impossible to move.
      */
     public void lockWheels() {
-        frontLeft.setDesiredState(
-            new SwerveModuleState(0, new Rotation2d(Math.PI / 4)),
-            false
-        );
-        frontRight.setDesiredState(
-            new SwerveModuleState(0, new Rotation2d(-Math.PI / 4)),
-            false
-        );
-        backLeft.setDesiredState(
-            new SwerveModuleState(0, new Rotation2d(-Math.PI / 4)),
-            false
-        );
-        backRight.setDesiredState(
-            new SwerveModuleState(0, new Rotation2d(Math.PI / 4)),
-            false
-        );
+        frontLeft.setDesiredState(new SwerveModuleState(0, new Rotation2d(Math.PI / 4)), false);
+        frontRight.setDesiredState(new SwerveModuleState(0, new Rotation2d(-Math.PI / 4)), false);
+        backLeft.setDesiredState(new SwerveModuleState(0, new Rotation2d(-Math.PI / 4)), false);
+        backRight.setDesiredState(new SwerveModuleState(0, new Rotation2d(Math.PI / 4)), false);
     }
 
     /**
@@ -587,10 +517,7 @@ public class Drive {
         };
     }
 
-    public Translation2d getCenterOfRotation(
-        double rotatePowerCcwPos,
-        double rightStickY
-    ) {
+    public Translation2d getCenterOfRotation(double rotatePowerCcwPos, double rightStickY) {
         Translation2d centerOfRotation = centerLocation;
 
         if (rightStickY >= 0.2) {
@@ -632,10 +559,7 @@ public class Drive {
      * Does not need to be called every loop as long as updatePoseEstimator is called.
      * @param visionEst The estimated pose from the cameras.
      */
-    public void addVisionMeasurement(
-        EstimatedRobotPose visionEst,
-        Matrix<N3, N3> stdDevs
-    ) {
+    public void addVisionMeasurement(EstimatedRobotPose visionEst, Matrix<N3, N3> stdDevs) {
         aprilTagsEstimator.addVisionMeasurement(
             visionEst.estimatedPose.toPose2d(),
             visionEst.timestampSeconds,

@@ -13,7 +13,6 @@ import edu.wpi.first.wpilibj.Timer;
 import frc.robot.util.AllianceUtil;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.Consumer;
 
 /**
  * This class has all the autonomous programs.
