@@ -1,17 +1,25 @@
 package frc.robot;
 
+import com.revrobotics.AbsoluteEncoder;
 import com.revrobotics.PersistMode;
 import com.revrobotics.RelativeEncoder;
 import com.revrobotics.ResetMode;
 import com.revrobotics.spark.SparkFlex;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
+import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.config.SparkBaseConfig;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.config.SparkFlexConfig;
+import com.revrobotics.spark.config.SparkMaxConfig;
 import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.controller.ArmFeedforward;
 import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.controller.ProfiledPIDController;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
+/**
+ * chud shooter class
+ */
 public class Shooter {
 
     private SparkFlex backspinMotor;
@@ -20,13 +28,20 @@ public class Shooter {
     private SparkFlex flywheelMotor;
     private SparkBaseConfig flywheelMotorConfig;
 
+    // private SparkMax hoodMotor;
+    // private SparkBaseConfig hoodMotorConfig;
+
     private RelativeEncoder backspinMotorEncoder;
     private RelativeEncoder flywheelMotorEncoder;
+    // private AbsoluteEncoder hoodAbsoluteEncoder;
 
     private PIDController backspinPIDController;
     private PIDController flywheelPIDController;
+    // private ProfiledPIDController hoodPIDController;
+    // private ArmFeedforward hoodFeedForward;
 
     // Motor IDs
+    // private final int HOOD_MOTOR_ID = 22;
     private final int BACKSPIN_MOTOR_ID = 21;
     private final int FLYWHEEL_MOTOR_ID = 20;
 
@@ -41,6 +56,25 @@ public class Shooter {
     private final double FLYWHEEL_D = 0.00005;
     private final double FLYWHEEL_TOLERANCE = 50.0;
 
+    // Hood PID and feed forward values determined with ReCalc using estimates of:
+    // 50:1 reduction, CoM distance of 4 inches from hinge, and an arm mass of 4 lbs.
+    // TODO: Use actual measurements in ReCalc and manually tune values
+    // private final double HOOD_P = 0.00886;
+    // private final double HOOD_I = 0.0;
+    // private final double HOOD_D = 0.0000833;
+    // private final double HOOD_TOLERANCE = 1.0;
+
+    // private final double HOOD_FFWD_KS = 0.0; // Still need to figure this out
+    // private final double HOOD_FFWD_KG = 0.440;
+    // private final double HOOD_FFWD_KV = 0.00789;
+    // private final double HOOD_FFWD_KA = 0.0000833;
+
+    // private final double HOOD_MAX_VEL_DEG = 1052.63 * 0.85;
+    // private final double HOOD_MAX_ACC_DEG = 61919.5 * 0.85;
+
+    // private final double HOOD_MIN_ANGLE_DEG = 15;
+    // private final double HOOD_MAX_ANGLE_DEG = 55;
+
     private double prevFlywheelVoltage = 0;
     private double prevBackspinVoltage = 0;
 
@@ -53,6 +87,9 @@ public class Shooter {
         flywheelMotor = new SparkFlex(FLYWHEEL_MOTOR_ID, MotorType.kBrushless);
         flywheelMotorConfig = new SparkFlexConfig();
 
+        // hoodMotor = new SparkMax(HOOD_MOTOR_ID, MotorType.kBrushless);
+        // hoodMotorConfig = new SparkMaxConfig();
+
         backspinMotorConfig.idleMode(IdleMode.kCoast);
         backspinMotorConfig.smartCurrentLimit(Robot.VORTEX_CURRENT_LIMIT);
         backspinMotorConfig.inverted(true);
@@ -61,17 +98,32 @@ public class Shooter {
         flywheelMotorConfig.smartCurrentLimit(Robot.VORTEX_CURRENT_LIMIT);
         flywheelMotorConfig.inverted(false);
 
+        // hoodMotorConfig.idleMode(IdleMode.kBrake);
+        // hoodMotorConfig.smartCurrentLimit(Robot.NEO_550_CURRENT_LIMIT);
+        // hoodMotorConfig.inverted(false);
+
         backspinMotor.configure(backspinMotorConfig, ResetMode.kNoResetSafeParameters, PersistMode.kPersistParameters);
         flywheelMotor.configure(flywheelMotorConfig, ResetMode.kNoResetSafeParameters, PersistMode.kPersistParameters);
+        // hoodMotor.configure(hoodMotorConfig, ResetMode.kNoResetSafeParameters, PersistMode.kPersistParameters);
 
         backspinMotorEncoder = backspinMotor.getEncoder();
         flywheelMotorEncoder = flywheelMotor.getEncoder();
+        // hoodAbsoluteEncoder = hoodMotor.getAbsoluteEncoder();
 
         backspinPIDController = new PIDController(BACKSPIN_P, BACKSPIN_I, BACKSPIN_D);
         backspinPIDController.setTolerance(BACKSPIN_TOLERANCE);
 
         flywheelPIDController = new PIDController(FLYWHEEL_P, FLYWHEEL_I, FLYWHEEL_D);
         flywheelPIDController.setTolerance(FLYWHEEL_TOLERANCE);
+        // hoodFeedForward = new ArmFeedforward(HOOD_FFWD_KS, HOOD_FFWD_KG, HOOD_FFWD_KV, HOOD_FFWD_KA);
+
+        // hoodPIDController = new ProfiledPIDController(
+        //     HOOD_P,
+        //     HOOD_I,
+        //     HOOD_D,
+        //     new TrapezoidProfile.Constraints(HOOD_MAX_VEL_DEG, HOOD_MAX_ACC_DEG)
+        // );
+        // hoodPIDController.setTolerance(HOOD_TOLERANCE);
     }
 
     public void setMotorRPM(double flywheelRPM, double backspinRPM) {
@@ -105,6 +157,14 @@ public class Shooter {
         flywheelMotor.setVoltage(voltage);
     }
 
+    /**
+     * voltage should be -12 to 12
+     * @param voltage
+     */
+    // public void setHoodMotorVoltage(double voltage) {
+    //     hoodMotor.setVoltage(voltage);
+    // }
+
     /*
      * maybe something to do eventually
      */
@@ -135,6 +195,28 @@ public class Shooter {
         prevBackspinVoltage = backspinVoltage;
     }
 
+    /**
+     * Moves the hood according to a target angle. targetAngleDeg should be between HOOD_MIN_ANGLE_DEG and HOOD_MAX_ANGLE_DEG.
+     * @param targetAngleDeg The target angle, in degrees. Clamped to HOOD_MIN_ANGLE_DEG and HOOD_MAX_ANGLE_DEG.
+     */
+    // public void setHoodAngle(double targetAngleDeg) {
+    //     targetAngleDeg = MathUtil.clamp(targetAngleDeg, HOOD_MIN_ANGLE_DEG, HOOD_MAX_ANGLE_DEG);
+
+    //     double currPositionDeg = hoodAbsoluteEncoder.getPosition();
+    //     double currVelocityDps = hoodAbsoluteEncoder.getVelocity();
+
+    //     double feedback = hoodPIDController.calculate(currPositionDeg, targetAngleDeg);
+    //     double feedforward = hoodFeedForward.calculateWithVelocities(
+    //         Math.toRadians(currPositionDeg),
+    //         Math.toRadians(currVelocityDps),
+    //         Math.toRadians(hoodPIDController.getSetpoint().velocity)
+    //     );
+
+    //     double voltage = feedback + feedforward;
+
+    //     hoodMotor.setVoltage(voltage);
+    // }
+
     public void printWheelRPMs() {
         double currentFlywheelRPM = flywheelMotorEncoder.getVelocity();
         double currentBackspinRPM = backspinMotorEncoder.getVelocity();
@@ -150,6 +232,10 @@ public class Shooter {
         prevBackspinVoltage = 0;
         prevFlywheelVoltage = 0;
     }
+
+    // public void stopHood() {
+    //     hoodMotor.stopMotor();
+    // }
 
     /******************************************************************************************************
      *
