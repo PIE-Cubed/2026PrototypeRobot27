@@ -39,6 +39,7 @@ public class Robot extends TimedRobot {
     private Odometry odometry;
     private Hopper hopper;
     private Shooter shooter;
+    private Climber climber;
 
     /**
      * This function is run when the robot is first started up and should be used for any
@@ -57,6 +58,7 @@ public class Robot extends TimedRobot {
         //odometry = new Odometry(drive);
         hopper = new Hopper();
         shooter = new Shooter();
+        climber = new Climber();
 
         SmartDashboard.putNumber("Shooter/FlywheelTargetRPM", 0);
         SmartDashboard.putNumber("Shooter/BackspinTargetRPM", 0);
@@ -169,7 +171,11 @@ public class Robot extends TimedRobot {
 
     /** This function is called periodically during test mode. */
     @Override
-    public void testPeriodic() {}
+    public void testPeriodic() {
+        climber.testMotor(controls.getRightTrigger(), controls.getLeftTrigger() * -1);
+
+        wheelControl();
+    }
 
     /** This function is called once when the robot is first started up. */
     @Override

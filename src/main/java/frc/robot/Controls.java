@@ -89,4 +89,12 @@ public class Controls {
     public boolean getAButton() {
         return manipController.getAButton();
     }
+
+    public double getLeftTrigger() {
+        return manipController.getLeftTriggerAxis() * 0.8;
+    }
+
+    public double getRightTrigger() {
+        return manipController.getRightTriggerAxis() * 0.8;
+    }
 }
