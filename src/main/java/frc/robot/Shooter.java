@@ -54,9 +54,9 @@ public class Shooter {
     // private final double BACKSPIN_D = 0.00003;
     // private final double BACKSPIN_TOLERANCE = 50.0;
 
-    private final double FLYWHEEL_P = 0.00015;
+    private final double FLYWHEEL_P = 0.0001;
     private final double FLYWHEEL_I = 0.0;
-    private final double FLYWHEEL_D = 0.00005;
+    private final double FLYWHEEL_D = 0.00002;
     private final double FLYWHEEL_TOLERANCE = 50.0;
 
     // Hood PID and feed forward values determined with ReCalc using estimates of:
