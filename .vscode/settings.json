@@ -68,5 +68,5 @@
     "[java]": {
         "editor.defaultFormatter": "RudraPatel.prettier-plugin-java-vscode"
     },
-    "prettier-plugin-java-vscode.prettierConfigPath": "C:\\Users\\madey\\RobolionsButNotARepo\\2026PrototypeRobot27\\.prettierrc.json"
+    "prettier-plugin-java-vscode.prettierConfigPath": "C:\\Users\\robol\\Documents\\2026 Software\\2026PrototypeRobot27\\.prettierrc.json"
 }

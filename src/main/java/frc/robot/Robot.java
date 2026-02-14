@@ -61,7 +61,8 @@ public class Robot extends TimedRobot {
         climber = new Climber();
 
         SmartDashboard.putNumber("Shooter/FlywheelTargetRPM", 0);
-        SmartDashboard.putNumber("Shooter/BackspinTargetRPM", 0);
+        // SmartDashboard.putNumber("Shooter/BackspinTargetRPM", 0);
+        SmartDashboard.putNumber("Shooter/HoodDegrees",20);
     }
 
     /**
@@ -134,15 +135,19 @@ public class Robot extends TimedRobot {
 
         if (controls.getAButton()) {
             shooter.setTargetRPMs(
-                SmartDashboard.getNumber("Shooter/FlywheelTargetRPM", 0),
-                SmartDashboard.getNumber("Shooter/BackspinTargetRPM", 0)
+                SmartDashboard.getNumber("Shooter/FlywheelTargetRPM", 0)
+                // SmartDashboard.getNumber("Shooter/BackspinTargetRPM", 0)
             );
+
+            shooter.setHoodAngle(SmartDashboard.getNumber("Shooter/HoodDegrees", 20));
+
             // shooter.setTargetRPMs(1550, 1650);
             // shooter.setTargetRPMs(1550, 1550);
             // shooter.setTargetRPMs(1550, 1420);
             // shooter.setMotorRPM(1600, 1470);
         } else {
             shooter.stopWheels();
+            shooter.stopHood();
         }
         /*
     SmartDashboard.putBoolean(
